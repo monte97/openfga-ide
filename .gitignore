@@ -12,3 +12,4 @@ dist
 coverage/
 frontend/coverage/
 backend/coverage/
+.stryker-tmp/
