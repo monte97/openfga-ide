@@ -1,0 +1,14 @@
+node_modules
+dist
+.env
+*.log
+*.tsbuildinfo
+.DS_Store
+
+# Claude Code local settings
+.claude/
+
+# Coverage output
+coverage/
+frontend/coverage/
+backend/coverage/

@@ -1,0 +1,116 @@
+# Coverage Report
+
+**Date:** 2026-03-26
+**Git commit:** `uncommitted` (working tree — nessun commit ancora nel repo)
+**Git branch:** master
+**Git status:** tutto untracked, 11 entry (backend/, frontend/, _bmad-output/, ...)
+**Test runner:** Vitest v4.1.2 + @vitest/coverage-v8
+**Stories implementate:** 1.1 → 1.6 (tutte in stato `review`)
+
+---
+
+## Backend
+
+**Totale: Stmts 91.48% | Branch 87.5% | Funcs 86.95% | Lines 92.47%**
+Tests: 34 passed (6 file)
+
+```
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   91.48 |     87.5 |   86.95 |   92.47 |
+ src               |     100 |      100 |     100 |     100 |
+  app.ts           |     100 |      100 |     100 |     100 |
+  config.ts        |     100 |      100 |     100 |     100 |
+  logger.ts        |     100 |      100 |     100 |     100 |
+ src/middleware    |     100 |     87.5 |     100 |     100 |
+  error-handler.ts |     100 |    83.33 |     100 |     100 | 11
+  validate.ts      |     100 |      100 |     100 |     100 |
+ src/routes        |   93.33 |      100 |     100 |   93.33 |
+  connection.ts    |   88.88 |      100 |     100 |   88.88 | 20,35
+  stores.ts        |     100 |      100 |     100 |     100 |
+ src/schemas       |     100 |      100 |     100 |     100 |
+  connection.ts    |     100 |      100 |     100 |     100 |
+  store.ts         |     100 |      100 |     100 |     100 |
+ src/services      |   85.36 |    78.57 |   76.92 |    87.5 |
+  openfga-client.ts|   83.33 |       75 |   72.72 |   85.71 | 24,56-63
+  store-service.ts |     100 |      100 |     100 |     100 |
+-------------------|---------|----------|---------|---------|-------------------
+```
+
+### Gap backend
+
+| File | Linee scoperte | Motivo |
+|------|---------------|--------|
+| `error-handler.ts:11` | branch `err.statusCode` non numerico | caso edge raro |
+| `routes/connection.ts:20,35` | rollback URL nel PUT / branch test-fail | non testato direttamente |
+| `services/openfga-client.ts:24,56-63` | `updateApiKey()` + path header `Authorization` | funzione non ancora usata nelle route |
+
+---
+
+## Frontend
+
+**Totale: Stmts 83.06% | Branch 83.57% | Funcs 72.97% | Lines 84.72%**
+Tests: 111 passed (17 file)
+
+```
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s
+-------------------|---------|----------|---------|---------|-------------------
+All files          |   83.06 |    83.57 |   72.97 |   84.72 |
+ components        |      95 |      100 |   77.77 |      95 |
+  StoreCard.vue    |      95 |      100 |   77.77 |      95 | 49
+ components/common |   93.54 |    93.61 |   77.77 |   94.64 |
+  AppBadge.vue     |     100 |      100 |     100 |     100 |
+  AppButton.vue    |     100 |      100 |     100 |     100 |
+  AppInput.vue     |     100 |      100 |     100 |     100 |
+  ConfirmDialog.vue|   73.33 |    91.66 |   55.55 |   78.57 | 22,29,32
+  ConnectionBadge  |     100 |       75 |     100 |     100 | 18
+  EmptyState.vue   |     100 |      100 |     100 |     100 |
+  LoadingSpinner   |     100 |       50 |     100 |     100 | 20
+  ToastContainer   |     100 |      100 |     100 |     100 |
+  TypeBadge.vue    |     100 |      100 |     100 |     100 |
+ components/layout |   73.52 |    79.01 |   65.62 |   75.25 |
+  AppHeader.vue    |   91.66 |    78.57 |     100 |   91.66 | 20
+  AppSidebar.vue   |   80.95 |       80 |   71.42 |   80.95 | 40-42,56
+  ConnectionPopover|   73.91 |       90 |   76.92 |      75 | 42-43,49-53,94
+  StoreSelector.vue|   56.52 |    58.82 |   33.33 |      60 | 15-21,37-46
+ composables       |   76.56 |    66.66 |   71.42 |    80.7 |
+  useApi.ts        |   68.75 |    61.11 |   55.55 |   74.41 | 47-48,57-60,70-71,80
+  useToast.ts      |     100 |    83.33 |     100 |     100 | 27
+ router            |   42.85 |      100 |   33.33 |   42.85 |
+  index.ts         |   42.85 |      100 |   33.33 |   42.85 | 18-28,38
+ stores            |   97.22 |      100 |     100 |    97.1 |
+  connection.ts    |   95.34 |      100 |     100 |   95.12 | 78-79
+  stores.ts        |     100 |      100 |     100 |     100 |
+ views             |   77.77 |    80.64 |   70.58 |   80.48 |
+  ModelViewer.vue  |       0 |        0 |     100 |       0 | 6-11
+  StoreAdmin.vue   |   81.39 |     86.2 |   70.58 |   84.61 | 44-45,61-62,105
+-------------------|---------|----------|---------|---------|-------------------
+```
+
+### Gap frontend
+
+| File | Linee scoperte | Motivo |
+|------|---------------|--------|
+| `views/ModelViewer.vue:6-11` | 0% — view stub | implementazione rinviata a Epic 2 |
+| `components/layout/StoreSelector.vue:15-46` | 57% — Combobox Headless UI | difficile da testare in jsdom senza interazione reale |
+| `components/layout/ConnectionPopover.vue:42-94` | logica edit/save/test | flusso a step non interamente coperto |
+| `composables/useApi.ts:47-80` | path PUT/DELETE con errori di rete | error branch parzialmente coperti |
+| `router/index.ts:18-38` | route definitions lazy | non navigate nei test unitari |
+| `components/common/ConfirmDialog.vue:22-32` | slot dialog non montato | Headless UI Dialog non renderizza in jsdom |
+
+---
+
+## Riepilogo
+
+| | Stmts | Branch | Funcs | Lines | Tests |
+|---|---|---|---|---|---|
+| **Backend** | 91.5% | 87.5% | 87.0% | 92.5% | 34 ✅ |
+| **Frontend** | 83.1% | 83.6% | 73.0% | 84.7% | 111 ✅ |
+| **Totale** | — | — | — | — | **145 ✅** |
+
+Nessuna gap critica sul codice di business. Le aree a bassa coverage sono:
+1. Componenti Headless UI (jsdom non supporta focus trap / ResizeObserver nativamente)
+2. View stub che verranno implementate negli sprint successivi (Epic 2+)
+3. `openfga-client.ts` — metodi non ancora esposti via route (`updateApiKey`)

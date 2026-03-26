@@ -1,0 +1,1402 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>OpenFGA Viewer — UX Design Direction</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+  :root {
+    --color-success: #22c55e;
+    --color-error: #ef4444;
+    --color-warning: #f59e0b;
+    --color-info: #3b82f6;
+    --surface-base: #030712;    /* gray-950 */
+    --surface-card: #111827;    /* gray-900 */
+    --surface-elevated: #1f2937; /* gray-800 */
+    --surface-border: #374151;  /* gray-700 */
+    --text-primary: #f3f4f6;    /* gray-100 */
+    --text-secondary: #9ca3af;  /* gray-400 */
+    --text-emphasis: #ffffff;
+    --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: var(--font-ui);
+    background: var(--surface-base);
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  /* ===== NAVIGATION BETWEEN MOCKUPS ===== */
+  .mockup-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: #000;
+    border-bottom: 1px solid var(--surface-border);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    font-size: 13px;
+  }
+  .mockup-nav .nav-label {
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-right: 8px;
+  }
+  .mockup-nav button {
+    background: var(--surface-elevated);
+    border: 1px solid var(--surface-border);
+    color: var(--text-primary);
+    padding: 6px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: var(--font-ui);
+    font-size: 13px;
+    transition: all 0.15s;
+  }
+  .mockup-nav button:hover { background: var(--surface-border); }
+  .mockup-nav button.active {
+    background: var(--color-info);
+    border-color: var(--color-info);
+    color: white;
+  }
+
+  .mockup-section {
+    display: none;
+    margin-top: 44px;
+    min-height: calc(100vh - 44px);
+  }
+  .mockup-section.active { display: block; }
+
+  /* ===== APP SHELL ===== */
+  .app-shell {
+    display: flex;
+    flex-direction: column;
+    height: calc(100vh - 44px);
+  }
+
+  /* Header */
+  .app-header {
+    height: 56px;
+    background: var(--surface-card);
+    border-bottom: 1px solid var(--surface-border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 16px;
+    flex-shrink: 0;
+  }
+  .app-logo {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-emphasis);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .app-logo svg { width: 24px; height: 24px; }
+  .header-spacer { flex: 1; }
+  .connection-badge {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    background: rgba(34, 197, 94, 0.1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: var(--color-success);
+  }
+  .connection-badge .dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--color-success);
+  }
+  .connection-badge.error {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.3);
+    color: var(--color-error);
+  }
+  .connection-badge.error .dot { background: var(--color-error); }
+  .store-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--surface-elevated);
+    border: 1px solid var(--surface-border);
+    padding: 6px 12px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-primary);
+    cursor: pointer;
+  }
+  .store-selector:hover { border-color: var(--text-secondary); }
+  .store-selector svg { width: 16px; height: 16px; color: var(--text-secondary); }
+
+  /* Layout */
+  .app-body {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Sidebar */
+  .app-sidebar {
+    width: 240px;
+    background: var(--surface-card);
+    border-right: 1px solid var(--surface-border);
+    padding: 12px 0;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    transition: width 0.2s;
+  }
+  .app-sidebar.collapsed { width: 64px; }
+  .sidebar-toggle {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    color: var(--text-secondary);
+  }
+  .sidebar-toggle:hover { color: var(--text-primary); }
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s;
+    font-size: 13px;
+    font-weight: 500;
+  }
+  .nav-item:hover {
+    background: var(--surface-elevated);
+    color: var(--text-primary);
+  }
+  .nav-item.active {
+    background: rgba(59, 130, 246, 0.1);
+    color: var(--color-info);
+    border-right: 2px solid var(--color-info);
+  }
+  .nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
+  .nav-item .nav-label { white-space: nowrap; }
+  .collapsed .nav-label { display: none; }
+  .collapsed .nav-item { justify-content: center; padding: 10px 0; }
+
+  /* Content */
+  .app-content {
+    flex: 1;
+    padding: 24px;
+    overflow-y: auto;
+  }
+  .page-title {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 24px;
+    color: var(--text-emphasis);
+  }
+
+  /* ===== CARDS ===== */
+  .card {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .card-header {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 16px;
+    color: var(--text-emphasis);
+  }
+
+  /* ===== TABS ===== */
+  .tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--surface-border);
+    margin-bottom: 20px;
+  }
+  .tab {
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+  }
+  .tab:hover { color: var(--text-primary); }
+  .tab.active {
+    color: var(--color-info);
+    border-bottom-color: var(--color-info);
+  }
+
+  /* ===== FORM ELEMENTS ===== */
+  .form-row {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    margin-bottom: 16px;
+  }
+  .form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+  }
+  .form-label {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .form-input {
+    background: var(--surface-base);
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .form-input:focus { border-color: var(--color-info); }
+  .form-input::placeholder { color: var(--surface-border); }
+  .form-select {
+    background: var(--surface-base);
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid transparent;
+    font-family: var(--font-ui);
+    transition: all 0.15s;
+  }
+  .btn svg { width: 16px; height: 16px; }
+  .btn-primary {
+    background: var(--color-info);
+    color: white;
+  }
+  .btn-primary:hover { background: #2563eb; }
+  .btn-secondary {
+    background: var(--surface-elevated);
+    color: var(--text-primary);
+    border-color: var(--surface-border);
+  }
+  .btn-secondary:hover { background: var(--surface-border); }
+  .btn-danger {
+    background: rgba(239, 68, 68, 0.1);
+    color: var(--color-error);
+    border-color: rgba(239, 68, 68, 0.3);
+  }
+  .btn-danger:hover { background: rgba(239, 68, 68, 0.2); }
+  .btn-success {
+    background: var(--color-success);
+    color: white;
+  }
+
+  /* ===== QUERY RESULT ===== */
+  .query-result {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 32px;
+    border-radius: 8px;
+    margin-top: 16px;
+  }
+  .query-result.allowed {
+    background: rgba(34, 197, 94, 0.08);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+  }
+  .query-result.denied {
+    background: rgba(239, 68, 68, 0.08);
+    border: 1px solid rgba(239, 68, 68, 0.2);
+  }
+  .result-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 12px;
+  }
+  .result-icon.allowed { background: rgba(34, 197, 94, 0.15); color: var(--color-success); }
+  .result-icon.denied { background: rgba(239, 68, 68, 0.15); color: var(--color-error); }
+  .result-icon svg { width: 28px; height: 28px; }
+  .result-text {
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .result-text.allowed { color: var(--color-success); }
+  .result-text.denied { color: var(--color-error); }
+  .result-detail {
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-bottom: 12px;
+  }
+  .why-btn {
+    font-size: 13px;
+    color: var(--color-info);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    background: none;
+    border: none;
+    font-family: var(--font-ui);
+    padding: 4px 8px;
+    border-radius: 4px;
+    transition: background 0.15s;
+  }
+  .why-btn:hover { background: rgba(59, 130, 246, 0.1); }
+
+  /* Why expansion */
+  .why-expansion {
+    width: 100%;
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--surface-base);
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+  }
+  .resolution-path {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 13px;
+  }
+  .path-node {
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+  }
+  .path-node.user { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+  .path-node.group { background: rgba(6, 182, 212, 0.15); color: #22d3ee; }
+  .path-node.resource { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+  .path-arrow { color: var(--text-secondary); font-size: 16px; }
+  .path-relation {
+    font-size: 11px;
+    color: var(--text-secondary);
+    font-style: italic;
+  }
+
+  /* ===== DATA TABLE ===== */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  .data-table th {
+    text-align: left;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--surface-border);
+    color: var(--text-secondary);
+    font-weight: 500;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .data-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(55, 65, 81, 0.5);
+    color: var(--text-primary);
+  }
+  .data-table tr:hover td { background: var(--surface-elevated); }
+  .data-table .mono {
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .data-table .checkbox {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--color-info);
+  }
+  .filter-bar {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    align-items: center;
+  }
+  .filter-input {
+    background: var(--surface-base);
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+    padding: 6px 10px;
+    color: var(--text-primary);
+    font-size: 12px;
+    font-family: var(--font-mono);
+    width: 180px;
+    outline: none;
+  }
+  .filter-input:focus { border-color: var(--color-info); }
+  .pagination {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 16px;
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+
+  /* ===== DSL CODE VIEW ===== */
+  .dsl-view {
+    background: var(--surface-base);
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+    overflow: hidden;
+  }
+  .dsl-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 12px;
+    background: var(--surface-elevated);
+    border-bottom: 1px solid var(--surface-border);
+    font-size: 12px;
+    color: var(--text-secondary);
+  }
+  .dsl-code {
+    padding: 16px 0;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.6;
+    overflow-x: auto;
+  }
+  .dsl-line {
+    display: flex;
+    padding: 0 16px;
+  }
+  .dsl-line:hover { background: rgba(255, 255, 255, 0.03); }
+  .line-num {
+    color: var(--surface-border);
+    width: 36px;
+    text-align: right;
+    margin-right: 16px;
+    user-select: none;
+    flex-shrink: 0;
+  }
+  .kw { color: #c084fc; }   /* keyword - purple */
+  .type { color: #60a5fa; }  /* type - blue */
+  .rel { color: #22d3ee; }   /* relation - cyan */
+  .op { color: #fbbf24; }    /* operator - amber */
+  .comment { color: #6b7280; font-style: italic; }
+
+  /* ===== GRAPH PLACEHOLDER ===== */
+  .graph-canvas {
+    background: var(--surface-base);
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+    height: 400px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .graph-node {
+    position: absolute;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-family: var(--font-mono);
+    font-weight: 500;
+    cursor: pointer;
+    border: 2px solid;
+    transition: transform 0.15s;
+  }
+  .graph-node:hover { transform: scale(1.05); }
+  .graph-edge {
+    position: absolute;
+    height: 2px;
+    transform-origin: left center;
+  }
+  .edge-label {
+    position: absolute;
+    font-size: 10px;
+    color: var(--text-secondary);
+    font-family: var(--font-mono);
+    background: var(--surface-base);
+    padding: 1px 4px;
+    border-radius: 2px;
+  }
+  .graph-controls {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    display: flex;
+    gap: 4px;
+  }
+  .graph-control-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+  .graph-control-btn:hover { color: var(--text-primary); background: var(--surface-elevated); }
+
+  /* ===== INSPECTOR PANEL ===== */
+  .inspector-overlay {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 320px;
+    height: 100%;
+    background: var(--surface-card);
+    border-left: 1px solid var(--surface-border);
+    padding: 20px;
+    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.3);
+    z-index: 10;
+  }
+  .inspector-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .inspector-title {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .inspector-close {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    padding: 4px;
+  }
+  .inspector-section {
+    margin-bottom: 16px;
+  }
+  .inspector-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+  }
+  .inspector-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 13px;
+    border-bottom: 1px solid rgba(55, 65, 81, 0.3);
+  }
+  .inspector-key { color: var(--text-secondary); }
+  .inspector-value { color: var(--text-primary); font-family: var(--font-mono); font-size: 12px; }
+
+  /* ===== EMPTY STATE ===== */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 64px 32px;
+    color: var(--text-secondary);
+    text-align: center;
+  }
+  .empty-state svg { width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.5; }
+  .empty-state .empty-title {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+  }
+  .empty-state .empty-desc {
+    font-size: 13px;
+    margin-bottom: 16px;
+    max-width: 320px;
+  }
+
+  /* ===== TOAST ===== */
+  .toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .toast {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    min-width: 280px;
+  }
+  .toast svg { width: 18px; height: 18px; flex-shrink: 0; }
+  .toast.success {
+    background: rgba(34, 197, 94, 0.15);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: var(--color-success);
+  }
+  .toast.error {
+    background: rgba(239, 68, 68, 0.15);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: var(--color-error);
+  }
+
+  /* ===== STORE ADMIN ===== */
+  .store-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .store-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--surface-elevated);
+    border: 1px solid var(--surface-border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .store-item:hover { border-color: var(--color-info); }
+  .store-item.active { border-color: var(--color-info); background: rgba(59, 130, 246, 0.08); }
+  .store-name { font-weight: 500; }
+  .store-id { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
+  .store-date { font-size: 12px; color: var(--text-secondary); }
+  .store-actions { display: flex; gap: 8px; }
+
+  /* ===== HEADER STATES ===== */
+  .header-state-demo {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    padding: 24px;
+  }
+  .state-label {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--color-info);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 8px;
+  }
+
+  /* Responsive content area */
+  .content-with-inspector {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Confirm dialog */
+  .dialog-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+  }
+  .dialog {
+    background: var(--surface-card);
+    border: 1px solid var(--surface-border);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: 400px;
+    width: 100%;
+  }
+  .dialog-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 8px;
+  }
+  .dialog-body {
+    font-size: 13px;
+    color: var(--text-secondary);
+    margin-bottom: 20px;
+  }
+  .dialog-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+</style>
+</head>
+<body>
+
+<!-- MOCKUP NAVIGATION -->
+<div class="mockup-nav">
+  <span class="nav-label">OpenFGA Viewer — Design Direction:</span>
+  <button class="active" onclick="showMockup('query')">Query Console</button>
+  <button onclick="showMockup('model')">Model Viewer</button>
+  <button onclick="showMockup('tuples')">Tuple Manager</button>
+  <button onclick="showMockup('stores')">Store Admin</button>
+  <button onclick="showMockup('header-states')">Header States</button>
+  <button onclick="showMockup('components')">Components</button>
+</div>
+
+<!-- ===== MOCKUP 1: QUERY CONSOLE ===== -->
+<div id="mockup-query" class="mockup-section active">
+  <div class="app-shell">
+    <div class="app-header">
+      <div class="app-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        OpenFGA Viewer
+      </div>
+      <div class="header-spacer"></div>
+      <div class="connection-badge">
+        <span class="dot"></span>
+        Connected
+      </div>
+      <div class="store-selector">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+        production-store
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+    </div>
+    <div class="app-body">
+      <div class="app-sidebar">
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/></svg>
+          <span class="nav-label">Model Viewer</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><rect x="4" y="8" width="16" height="8" rx="1"/></svg>
+          <span class="nav-label">Tuple Manager</span>
+        </div>
+        <div class="nav-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <span class="nav-label">Query Console</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 3v3m0 12v3m-9-9h3m12 0h3m-2.6-6.4-2.1 2.1M7.7 16.3l-2.1 2.1m0-12.8 2.1 2.1m8.5 8.5 2.1 2.1"/></svg>
+          <span class="nav-label">Relationship Graph</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg>
+          <span class="nav-label">Store Admin</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span class="nav-label">Import / Export</span>
+        </div>
+      </div>
+      <div class="app-content">
+        <h1 class="page-title">Query Console</h1>
+        <div class="card">
+          <div class="tabs">
+            <div class="tab active">Check</div>
+            <div class="tab">List Objects</div>
+            <div class="tab">List Users</div>
+            <div class="tab">Expand</div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <span class="form-label">User</span>
+              <input class="form-input" type="text" value="user:marco" placeholder="user:...">
+            </div>
+            <div class="form-group">
+              <span class="form-label">Relation</span>
+              <select class="form-select">
+                <option>viewer</option>
+                <option>editor</option>
+                <option>owner</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <span class="form-label">Object</span>
+              <input class="form-input" type="text" value="document:specs" placeholder="type:id">
+            </div>
+            <button class="btn btn-primary">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5,3 19,12 5,21"/></svg>
+              Check
+            </button>
+          </div>
+
+          <!-- ALLOWED RESULT -->
+          <div class="query-result allowed">
+            <div class="result-icon allowed">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+            </div>
+            <div class="result-text allowed">Allowed</div>
+            <div class="result-detail">user:marco can viewer document:specs — 47ms</div>
+            <button class="why-btn" onclick="document.getElementById('why-panel').style.display = document.getElementById('why-panel').style.display === 'none' ? 'block' : 'none'">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Why?
+            </button>
+            <div id="why-panel" class="why-expansion">
+              <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; font-weight: 500;">Resolution Path</div>
+              <div class="resolution-path">
+                <span class="path-node user">user:marco</span>
+                <span class="path-arrow">→</span>
+                <span class="path-relation">member of</span>
+                <span class="path-arrow">→</span>
+                <span class="path-node group">team:backend</span>
+                <span class="path-arrow">→</span>
+                <span class="path-relation">viewer</span>
+                <span class="path-arrow">→</span>
+                <span class="path-node resource">document:specs</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="toast-container">
+    <div class="toast success">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>
+      Check query completed in 47ms
+    </div>
+  </div>
+</div>
+
+<!-- ===== MOCKUP 2: MODEL VIEWER ===== -->
+<div id="mockup-model" class="mockup-section">
+  <div class="app-shell">
+    <div class="app-header">
+      <div class="app-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        OpenFGA Viewer
+      </div>
+      <div class="header-spacer"></div>
+      <div class="connection-badge"><span class="dot"></span>Connected</div>
+      <div class="store-selector">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+        production-store
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+    </div>
+    <div class="app-body">
+      <div class="app-sidebar">
+        <div class="nav-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/></svg>
+          <span class="nav-label">Model Viewer</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><rect x="4" y="8" width="16" height="8" rx="1"/></svg>
+          <span class="nav-label">Tuple Manager</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <span class="nav-label">Query Console</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 3v3m0 12v3m-9-9h3m12 0h3m-2.6-6.4-2.1 2.1M7.7 16.3l-2.1 2.1m0-12.8 2.1 2.1m8.5 8.5 2.1 2.1"/></svg>
+          <span class="nav-label">Relationship Graph</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg>
+          <span class="nav-label">Store Admin</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span class="nav-label">Import / Export</span>
+        </div>
+      </div>
+      <div class="app-content">
+        <h1 class="page-title">Model Viewer</h1>
+        <div class="card">
+          <div class="tabs">
+            <div class="tab active">DSL</div>
+            <div class="tab">Graph</div>
+          </div>
+          <div class="dsl-view">
+            <div class="dsl-header">
+              <span>authorization-model.fga</span>
+              <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copy
+              </button>
+            </div>
+            <div class="dsl-code">
+              <div class="dsl-line"><span class="line-num">1</span><span class="kw">model</span></div>
+              <div class="dsl-line"><span class="line-num">2</span>&nbsp;&nbsp;<span class="kw">schema</span> 1.1</div>
+              <div class="dsl-line"><span class="line-num">3</span></div>
+              <div class="dsl-line"><span class="line-num">4</span><span class="kw">type</span> <span class="type">user</span></div>
+              <div class="dsl-line"><span class="line-num">5</span></div>
+              <div class="dsl-line"><span class="line-num">6</span><span class="kw">type</span> <span class="type">team</span></div>
+              <div class="dsl-line"><span class="line-num">7</span>&nbsp;&nbsp;<span class="kw">relations</span></div>
+              <div class="dsl-line"><span class="line-num">8</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">define</span> <span class="rel">member</span>: [<span class="type">user</span>]</div>
+              <div class="dsl-line"><span class="line-num">9</span></div>
+              <div class="dsl-line"><span class="line-num">10</span><span class="kw">type</span> <span class="type">document</span></div>
+              <div class="dsl-line"><span class="line-num">11</span>&nbsp;&nbsp;<span class="kw">relations</span></div>
+              <div class="dsl-line"><span class="line-num">12</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">define</span> <span class="rel">owner</span>: [<span class="type">user</span>]</div>
+              <div class="dsl-line"><span class="line-num">13</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">define</span> <span class="rel">editor</span>: [<span class="type">user</span>, <span class="type">team</span><span class="op">#</span><span class="rel">member</span>] <span class="op">or</span> <span class="rel">owner</span></div>
+              <div class="dsl-line"><span class="line-num">14</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">define</span> <span class="rel">viewer</span>: [<span class="type">user</span>, <span class="type">team</span><span class="op">#</span><span class="rel">member</span>] <span class="op">or</span> <span class="rel">editor</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MOCKUP 3: TUPLE MANAGER ===== -->
+<div id="mockup-tuples" class="mockup-section">
+  <div class="app-shell">
+    <div class="app-header">
+      <div class="app-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        OpenFGA Viewer
+      </div>
+      <div class="header-spacer"></div>
+      <div class="connection-badge"><span class="dot"></span>Connected</div>
+      <div class="store-selector">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+        production-store
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+    </div>
+    <div class="app-body">
+      <div class="app-sidebar">
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/></svg>
+          <span class="nav-label">Model Viewer</span>
+        </div>
+        <div class="nav-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><rect x="4" y="8" width="16" height="8" rx="1"/></svg>
+          <span class="nav-label">Tuple Manager</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <span class="nav-label">Query Console</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 3v3m0 12v3m-9-9h3m12 0h3"/></svg>
+          <span class="nav-label">Relationship Graph</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg>
+          <span class="nav-label">Store Admin</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span class="nav-label">Import / Export</span>
+        </div>
+      </div>
+      <div class="app-content">
+        <h1 class="page-title">Tuple Manager</h1>
+        <div class="card">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+            <div class="filter-bar">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="color: var(--text-secondary)"><polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46"/></svg>
+              <input class="filter-input" placeholder="Filter by type..." value="document">
+              <input class="filter-input" placeholder="Filter by relation...">
+              <input class="filter-input" placeholder="Filter by user...">
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <button class="btn btn-danger" style="font-size: 12px; padding: 6px 12px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                Delete Selected (2)
+              </button>
+              <button class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add Tuple
+              </button>
+            </div>
+          </div>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width: 40px;"><input type="checkbox" class="checkbox"></th>
+                <th>User</th>
+                <th>Relation</th>
+                <th>Object</th>
+                <th style="width: 80px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><input type="checkbox" class="checkbox" checked></td>
+                <td class="mono">user:marco</td>
+                <td>viewer</td>
+                <td class="mono">document:specs</td>
+                <td><button class="btn btn-danger" style="padding: 2px 8px; font-size: 11px;">Delete</button></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" class="checkbox" checked></td>
+                <td class="mono">user:sara</td>
+                <td>editor</td>
+                <td class="mono">document:roadmap</td>
+                <td><button class="btn btn-danger" style="padding: 2px 8px; font-size: 11px;">Delete</button></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" class="checkbox"></td>
+                <td class="mono">team:backend#member</td>
+                <td>viewer</td>
+                <td class="mono">document:specs</td>
+                <td><button class="btn btn-danger" style="padding: 2px 8px; font-size: 11px;">Delete</button></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" class="checkbox"></td>
+                <td class="mono">user:lucia</td>
+                <td>owner</td>
+                <td class="mono">document:architecture</td>
+                <td><button class="btn btn-danger" style="padding: 2px 8px; font-size: 11px;">Delete</button></td>
+              </tr>
+              <tr>
+                <td><input type="checkbox" class="checkbox"></td>
+                <td class="mono">team:platform#member</td>
+                <td>editor</td>
+                <td class="mono">document:roadmap</td>
+                <td><button class="btn btn-danger" style="padding: 2px 8px; font-size: 11px;">Delete</button></td>
+              </tr>
+            </tbody>
+          </table>
+          <div class="pagination">
+            <span>Showing 1-5 of 847 tuples</span>
+            <div style="display: flex; gap: 4px;">
+              <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">Previous</button>
+              <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">Next</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MOCKUP 4: STORE ADMIN ===== -->
+<div id="mockup-stores" class="mockup-section">
+  <div class="app-shell">
+    <div class="app-header">
+      <div class="app-logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+        OpenFGA Viewer
+      </div>
+      <div class="header-spacer"></div>
+      <div class="connection-badge"><span class="dot"></span>Connected</div>
+      <div class="store-selector">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+        production-store
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+      </div>
+    </div>
+    <div class="app-body">
+      <div class="app-sidebar">
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/></svg>
+          <span class="nav-label">Model Viewer</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><rect x="4" y="8" width="16" height="8" rx="1"/></svg>
+          <span class="nav-label">Tuple Manager</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+          <span class="nav-label">Query Console</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 3v3m0 12v3m-9-9h3m12 0h3"/></svg>
+          <span class="nav-label">Relationship Graph</span>
+        </div>
+        <div class="nav-item active">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg>
+          <span class="nav-label">Store Admin</span>
+        </div>
+        <div class="nav-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <span class="nav-label">Import / Export</span>
+        </div>
+      </div>
+      <div class="app-content">
+        <h1 class="page-title">Store Administration</h1>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <span style="color: var(--text-secondary); font-size: 13px;">3 stores on this instance</span>
+          <button class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Create Store
+          </button>
+        </div>
+        <div class="store-list">
+          <div class="store-item active">
+            <div>
+              <div class="store-name">production-store</div>
+              <div class="store-id">01HXYZ123456789ABCDEF</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div class="store-date">Created: 2026-01-15</div>
+              <div class="store-actions">
+                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Backup
+                </button>
+                <button class="btn btn-danger" style="padding: 4px 10px; font-size: 11px;">Delete</button>
+              </div>
+            </div>
+          </div>
+          <div class="store-item">
+            <div>
+              <div class="store-name">staging-store</div>
+              <div class="store-id">01HXYZ987654321FEDCBA</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div class="store-date">Created: 2026-02-10</div>
+              <div class="store-actions">
+                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Backup
+                </button>
+                <button class="btn btn-danger" style="padding: 4px 10px; font-size: 11px;">Delete</button>
+              </div>
+            </div>
+          </div>
+          <div class="store-item">
+            <div>
+              <div class="store-name">dev-local</div>
+              <div class="store-id">01HXYZAABBCCDD112233</div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 16px;">
+              <div class="store-date">Created: 2026-03-20</div>
+              <div class="store-actions">
+                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Backup
+                </button>
+                <button class="btn btn-danger" style="padding: 4px 10px; font-size: 11px;">Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MOCKUP 5: HEADER STATES ===== -->
+<div id="mockup-header-states" class="mockup-section">
+  <div class="header-state-demo">
+    <div>
+      <div class="state-label">State 1: Connected + Store Selected</div>
+      <div class="app-header" style="border-radius: 8px;">
+        <div class="app-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          OpenFGA Viewer
+        </div>
+        <div class="header-spacer"></div>
+        <div class="connection-badge"><span class="dot"></span>Connected</div>
+        <div class="store-selector">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+          production-store
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="state-label">State 2: Connected + No Store Selected</div>
+      <div class="app-header" style="border-radius: 8px;">
+        <div class="app-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          OpenFGA Viewer
+        </div>
+        <div class="header-spacer"></div>
+        <div class="connection-badge"><span class="dot"></span>Connected</div>
+        <div class="store-selector" style="border-color: var(--color-info); animation: pulse 2s infinite;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+          <span style="color: var(--text-secondary);">Select a store...</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
+      <style>@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }</style>
+    </div>
+    <div>
+      <div class="state-label">State 3: Disconnected / Error</div>
+      <div class="app-header" style="border-radius: 8px;">
+        <div class="app-logo">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          OpenFGA Viewer
+        </div>
+        <div class="header-spacer"></div>
+        <div class="connection-badge error"><span class="dot"></span>Connection Error</div>
+        <div class="store-selector" style="opacity: 0.4; cursor: not-allowed;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
+          <span style="color: var(--text-secondary);">—</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="state-label">Empty State Example: No Store Selected</div>
+      <div class="card">
+        <div class="empty-state">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg>
+          <div class="empty-title">No store selected</div>
+          <div class="empty-desc">Select a store from the header or visit Store Admin to create one.</div>
+          <button class="btn btn-primary">Go to Store Admin</button>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="state-label">Confirm Dialog: Destructive Action</div>
+      <div style="position: relative; height: 200px; background: var(--surface-base); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+        <div class="dialog" style="position: relative;">
+          <div class="dialog-title" style="color: var(--color-error);">Delete Store</div>
+          <div class="dialog-body">Are you sure you want to delete <strong style="color: var(--text-primary);">staging-store</strong>? This action cannot be undone. All models and tuples will be permanently removed.</div>
+          <div class="dialog-actions">
+            <button class="btn btn-secondary">Cancel</button>
+            <button class="btn btn-danger">Delete Store</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== MOCKUP 6: COMPONENTS ===== -->
+<div id="mockup-components" class="mockup-section">
+  <div style="padding: 24px; max-width: 900px; margin: 0 auto;">
+    <h1 class="page-title">Component Library</h1>
+
+    <div class="card">
+      <div class="card-header">Buttons</div>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+        <button class="btn btn-primary">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="5,3 19,12 5,21"/></svg>
+          Primary
+        </button>
+        <button class="btn btn-secondary">Secondary</button>
+        <button class="btn btn-danger">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          Danger
+        </button>
+        <button class="btn btn-success">Success</button>
+        <button class="btn btn-primary" style="opacity: 0.5; cursor: not-allowed;">Disabled</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Form Elements</div>
+      <div class="form-row">
+        <div class="form-group">
+          <span class="form-label">Text Input</span>
+          <input class="form-input" type="text" placeholder="Enter value...">
+        </div>
+        <div class="form-group">
+          <span class="form-label">Monospace Input</span>
+          <input class="form-input" type="text" value="user:alice" style="font-family: var(--font-mono);">
+        </div>
+        <div class="form-group">
+          <span class="form-label">Select</span>
+          <select class="form-select">
+            <option>viewer</option>
+            <option>editor</option>
+            <option>owner</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Badges</div>
+      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+        <div class="connection-badge"><span class="dot"></span>Connected</div>
+        <div class="connection-badge error"><span class="dot"></span>Disconnected</div>
+        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; font-family: var(--font-mono);">user</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: rgba(139, 92, 246, 0.15); color: #a78bfa; font-family: var(--font-mono);">document</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: rgba(245, 158, 11, 0.15); color: #fbbf24; font-family: var(--font-mono);">team</span>
+        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: rgba(16, 185, 129, 0.15); color: #34d399; font-family: var(--font-mono);">organization</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Tabs</div>
+      <div class="tabs">
+        <div class="tab active">Active Tab</div>
+        <div class="tab">Inactive Tab</div>
+        <div class="tab">Another Tab</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Query Results</div>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+        <div class="query-result allowed" style="padding: 20px;">
+          <div class="result-icon allowed" style="width: 36px; height: 36px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20"><polyline points="20,6 9,17 4,12"/></svg>
+          </div>
+          <div class="result-text allowed" style="font-size: 16px;">Allowed</div>
+          <div class="result-detail">47ms</div>
+        </div>
+        <div class="query-result denied" style="padding: 20px;">
+          <div class="result-icon denied" style="width: 36px; height: 36px;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </div>
+          <div class="result-text denied" style="font-size: 16px;">Denied</div>
+          <div class="result-detail">32ms</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">Toast Notifications</div>
+      <div style="display: flex; flex-direction: column; gap: 8px;">
+        <div class="toast success" style="position: relative;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>
+          Tuple added successfully
+        </div>
+        <div class="toast error" style="position: relative;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+          Failed to connect: ECONNREFUSED
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+function showMockup(id) {
+  document.querySelectorAll('.mockup-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.mockup-nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('mockup-' + id).classList.add('active');
+  event.target.classList.add('active');
+}
+</script>
+</body>
+</html>

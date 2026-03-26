@@ -1,0 +1,56 @@
+@import "tailwindcss";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/700.css";
+
+@theme {
+  /* Surface colors */
+  --color-surface-base: #030712;
+  --color-surface-card: #111827;
+  --color-surface-elevated: #1f2937;
+  --color-surface-border: #374151;
+
+  /* Semantic colors */
+  --color-success: #22c55e;
+  --color-error: #ef4444;
+  --color-warning: #f59e0b;
+  --color-info: #3b82f6;
+
+  /* Text colors */
+  --color-text-primary: #f3f4f6;
+  --color-text-secondary: #9ca3af;
+  --color-text-emphasis: #ffffff;
+
+  /* Graph node color palette */
+  --color-node-0: #3b82f6;
+  --color-node-1: #8b5cf6;
+  --color-node-2: #f59e0b;
+  --color-node-3: #10b981;
+  --color-node-4: #ec4899;
+  --color-node-5: #06b6d4;
+  --color-node-6: #f97316;
+  --color-node-7: #84cc16;
+
+  /* Font families */
+  --font-sans: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+}
+
+/* Disable ligatures on monospace elements */
+.font-mono {
+  font-feature-settings: "liga" 0;
+}
+
+/* Body defaults */
+body {
+  @apply bg-surface-base text-text-primary font-sans;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+}
