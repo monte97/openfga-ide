@@ -67,11 +67,12 @@ function onDelete(e: Event) {
         disabled
         title="Coming in Phase 2"
         @click.stop
+        @keydown.stop
       >
         <Archive class="size-4" />
         Backup
       </AppButton>
-      <AppButton variant="danger" @click="onDelete">
+      <AppButton variant="danger" @click="onDelete" @keydown.stop>
         <Trash2 class="size-4" />
         Delete
       </AppButton>

@@ -1,6 +1,6 @@
 # Story 1.5: Connection Status and Runtime Configuration
 
-Status: review
+Status: done
 
 ## Story
 
@@ -185,6 +185,20 @@ Claude Sonnet 4.6
 - ConnectionPopover: Headless UI Popover, read-only → edit → test → save flow; Esc/click-outside close automatic
 - StoreSelector: Headless UI Combobox, type-to-filter, bound to connection store
 - AppHeader: 3-state display (connected+store, connected+no-store with animate-pulse, error), onMounted fetch, watch for error→toast
+
+### Review Findings
+
+- [x] [Review][Patch] Double toast su ogni errore API — `useApi` mostra toast + `AppHeader` watch mostra secondo toast identico [AppHeader.vue:18-22]
+- [x] [Review][Patch] Esc/click-outside non resetta edit state — riaprendo popover mostra form stale [ConnectionPopover.vue]
+- [x] [Review][Patch] `PopoverButton as="div"` non raggiungibile da tastiera — `div` non è focusable senza `tabindex="0"` [ConnectionPopover.vue:67]
+- [x] [Review][Patch] `import { computed }` dopo l'uso — misplaced import, violazione di stile e falso positivo linter [ConnectionPopover.vue:62]
+- [x] [Review][Patch] URL cambiato dopo test non invalida `testResult` — Save rimane abilitato su URL non testato [ConnectionPopover.vue]
+- [x] [Review][Defer] `testConnection` scatena toast indesiderato via `useApi` — rumore UX durante test inline [connection.ts + useApi.ts] — deferred, pre-existing
+- [x] [Review][Defer] Error toast si accumulano senza limite — toast permanenti impilati su retry multipli [useToast.ts + AppHeader.vue] — deferred, pre-existing
+- [x] [Review][Defer] `fetchStores` concorrente: last-write-wins su `stores.value` [connection.ts:85-92] — deferred, pre-existing
+- [x] [Review][Defer] `loading` flag condiviso tra `fetchConnection` e `updateConnection` — spinner sparisce prematuramente [connection.ts] — deferred, pre-existing
+- [x] [Review][Defer] StoreSelector usa `Combobox` raw invece di `SearchableSelect` (Story 1.3 component) — deferred, pre-existing
+- [x] [Review][Defer] Nessun messaggio "no results" nel dropdown store quando la ricerca non dà risultati [StoreSelector.vue] — deferred, pre-existing
 
 ### Change Log
 

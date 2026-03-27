@@ -11,7 +11,7 @@ vi.mock('./openfga-client.js', () => ({
 }))
 
 const { openfgaClient } = await import('./openfga-client.js')
-const mockClient = openfgaClient as {
+const mockClient = openfgaClient as unknown as {
   post: ReturnType<typeof vi.fn>
   delete: ReturnType<typeof vi.fn>
   storeId: string

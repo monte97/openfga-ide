@@ -9,3 +9,27 @@ export interface ListStoresResponse {
   stores: StoreInfo[]
   continuation_token?: string
 }
+
+export interface TypeDefinition {
+  type: string
+  relations: Record<string, unknown>
+  metadata: Record<string, unknown> | null
+}
+
+export interface AuthorizationModel {
+  id: string
+  schema_version: string
+  type_definitions: TypeDefinition[]
+  conditions?: Record<string, unknown>
+}
+
+export interface ListAuthorizationModelsResponse {
+  authorization_models: AuthorizationModel[]
+  continuation_token?: string
+}
+
+export interface ModelResponse {
+  json: AuthorizationModel | null
+  dsl: string | null
+  authorizationModelId: string | null
+}

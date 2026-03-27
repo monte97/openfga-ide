@@ -34,6 +34,7 @@ const collapsed = ref<boolean>(false)
 function toggle() {
   collapsed.value = !collapsed.value
   localStorage.setItem(STORAGE_KEY, String(collapsed.value))
+  window.dispatchEvent(new CustomEvent('sidebar-toggle'))
 }
 
 function handleKeydown(e: KeyboardEvent) {

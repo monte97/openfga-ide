@@ -37,7 +37,7 @@ class OpenFgaClient {
   async get(path: string): Promise<unknown> {
     const url = `${this.baseUrl}${path}`
     logger.debug({ url, method: 'GET' }, 'OpenFGA request')
-    const res = await fetch(url, { headers: this.headers() })
+    const res = await fetch(url, { headers: this.headers(), signal: AbortSignal.timeout(5000) })
     return this.handleResponse(res)
   }
 
@@ -48,6 +48,7 @@ class OpenFgaClient {
       method: 'POST',
       headers: this.headers(),
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(5000),
     })
     return this.handleResponse(res)
   }
@@ -59,12 +60,13 @@ class OpenFgaClient {
       method: 'DELETE',
       headers: this.headers(),
       body: body ? JSON.stringify(body) : undefined,
+      signal: AbortSignal.timeout(5000),
     })
     return this.handleResponse(res)
   }
 
   private async handleResponse(res: Response): Promise<unknown> {
-    const data = await res.json().catch(() => null)
+    const data = res.status === 204 ? null : await res.json().catch(() => null)
     if (!res.ok) {
       const message = (data as Record<string, unknown>)?.message ?? res.statusText
       const err = new Error(String(message))
@@ -79,6 +81,7 @@ class OpenFgaClient {
     const targetUrl = url || this.baseUrl
     const res = await fetch(`${targetUrl}/stores`, {
       headers: this.headers(),
+      signal: AbortSignal.timeout(5000),
     })
     if (!res.ok) {
       throw new Error(`Connection failed: ${res.status} ${res.statusText}`)

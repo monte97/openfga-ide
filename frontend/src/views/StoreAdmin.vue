@@ -35,6 +35,8 @@ async function submitCreate() {
     await storesStore.createStore(newStoreName.value.trim())
     newStoreName.value = ''
     showCreateForm.value = false
+  } catch {
+    // useApi already shows a toast on error; keep form open so user can retry
   } finally {
     creating.value = false
   }
@@ -52,9 +54,12 @@ function requestDelete(storeId: string, storeName: string) {
 
 async function confirmDelete() {
   if (!pendingDeleteId.value) return
-  await storesStore.deleteStore(pendingDeleteId.value)
-  pendingDeleteId.value = null
-  pendingDeleteName.value = ''
+  try {
+    await storesStore.deleteStore(pendingDeleteId.value)
+  } finally {
+    pendingDeleteId.value = null
+    pendingDeleteName.value = ''
+  }
 }
 
 function cancelDelete() {

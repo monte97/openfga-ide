@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Popover, PopoverButton, PopoverPanel } from '@headlessui/vue'
 import { Check, X } from 'lucide-vue-next'
 import { storeToRefs } from 'pinia'
@@ -59,14 +59,21 @@ const badgeStatus = computed(() => {
   return 'disconnected'
 })
 
-import { computed } from 'vue'
+// Reset testResult when URL changes so stale test does not enable Save on a different URL
+watch(newUrl, () => {
+  testResult.value = null
+  testError.value = ''
+})
+
+function onPanelClose() {
+  cancelEdit()
+}
 </script>
 
 <template>
   <Popover class="relative">
     <PopoverButton
-      as="div"
-      class="cursor-pointer focus:outline-none focus:ring-2 focus:ring-info rounded"
+      class="focus:outline-none focus:ring-2 focus:ring-info rounded bg-transparent border-0 p-0 cursor-pointer"
       aria-label="Toggle connection settings"
     >
       <ConnectionBadge :status="badgeStatus" />
@@ -74,6 +81,7 @@ import { computed } from 'vue'
 
     <PopoverPanel
       class="absolute right-0 top-full mt-2 w-80 bg-surface-card border border-surface-border rounded-lg shadow-xl z-50 p-4"
+      @vue:unmounted="onPanelClose"
     >
       <div v-if="!editing" class="space-y-3">
         <div>

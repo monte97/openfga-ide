@@ -1,6 +1,6 @@
 # Story 1.3: Design System Foundation and Base Components
 
-Status: review
+Status: done
 
 ## Story
 
@@ -183,6 +183,12 @@ Claude Opus 4.6 (1M context)
 - useToast: module-level singleton reactive state, 5s auto-dismiss for non-error, timeout cleared on dismiss
 - ToastContainer: fixed bottom-right, TransitionGroup animations, aria-live="polite"
 - composables/index.ts barrel export
+
+### Review Findings
+
+- [x] [Review][Patch] AppInput `inputId` non reattivo a `props.id` — calcolato con `const` al setup, non `computed()` [AppInput.vue:284]
+- [x] [Review][Defer] `aria-live="polite"` su ToastContainer — i toast error dovrebbero usare `assertive` [ToastContainer.vue] — deferred, pre-existing
+- [x] [Review][Defer] Inter non caricato via @fontsource — solo fallback di sistema [main.css / package.json] — deferred, pre-existing
 
 ### Change Log
 

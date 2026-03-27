@@ -1,24 +1,16 @@
 <script setup lang="ts">
-import { watch, onMounted } from 'vue'
+import { onMounted } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useConnectionStore } from '@/stores/connection'
-import { useToast } from '@/composables/useToast'
 import ConnectionPopover from './ConnectionPopover.vue'
 import StoreSelector from './StoreSelector.vue'
 
 const connectionStore = useConnectionStore()
-const { status, error, storeId } = storeToRefs(connectionStore)
-const toast = useToast()
+const { status, storeId } = storeToRefs(connectionStore)
 
 onMounted(async () => {
   await connectionStore.fetchConnection()
   await connectionStore.fetchStores()
-})
-
-watch(status, (newStatus) => {
-  if (newStatus === 'error' && error.value) {
-    toast.show({ type: 'error', message: error.value })
-  }
 })
 </script>
 

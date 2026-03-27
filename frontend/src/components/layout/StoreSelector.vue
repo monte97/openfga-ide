@@ -3,8 +3,10 @@ import { ref, computed } from 'vue'
 import { Combobox, ComboboxInput, ComboboxOptions, ComboboxOption } from '@headlessui/vue'
 import { storeToRefs } from 'pinia'
 import { useConnectionStore } from '@/stores/connection'
+import { useStoresStore } from '@/stores/stores'
 
 const connectionStore = useConnectionStore()
+const storesStore = useStoresStore()
 const { stores, storeId, activeStoreName } = storeToRefs(connectionStore)
 
 const query = ref('')
@@ -17,7 +19,7 @@ const filteredStores = computed(() => {
 })
 
 function onSelect(id: string | null) {
-  if (id) connectionStore.selectStore(id)
+  if (id) storesStore.selectStore(id)
   query.value = ''
 }
 </script>

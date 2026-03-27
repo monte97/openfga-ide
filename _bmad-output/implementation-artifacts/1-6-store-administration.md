@@ -1,6 +1,6 @@
 # Story 1.6: Store Administration
 
-Status: review
+Status: done
 
 ## Story
 
@@ -177,6 +177,20 @@ claude-sonnet-4-6
 - `useStoresStore.selectStore` calls `useConnectionStore()` inside the action (cross-store access pattern safe in Pinia)
 - `useRouter()` used inside Pinia store setup — works because router is installed before any store is accessed
 - Views (ModelViewer, TupleManager, QueryConsole) updated to show "No store selected" EmptyState when `connectionStore.storeId` is empty
+
+### Review Findings
+
+- [x] [Review][Patch] `submitCreate` no catch — errore di creazione silenzioso, nessun feedback all'utente [StoreAdmin.vue:submitCreate]
+- [x] [Review][Patch] `confirmDelete` no try/catch — dialog rimane aperto su errore di delete [StoreAdmin.vue:confirmDelete]
+- [x] [Review][Patch] `data.stores` senza null guard in `fetchStores` — crash se API restituisce risposta non standard [stores.ts:35]
+- [x] [Review][Patch] StoreCard keydown bubbling — Enter su Delete button scatena anche emit('select') sul parent div [StoreCard.vue]
+- [x] [Review][Patch] `createStore`/`deleteStore` non sincronizzano `connectionStore.stores` — `activeStoreName` sbagliato in header dopo creazione [stores.ts]
+- [x] [Review][Patch] `StoreSelector.onSelect` chiama `connectionStore.selectStore` — bypassa `hasNavigatedThisSession`, auto-navigate mai triggered dal header [StoreSelector.vue:20]
+- [x] [Review][Defer] `storeList` non azzerato su errore `fetchStores` — dati stale in memoria [stores.ts] — deferred, pre-existing
+- [x] [Review][Defer] TOCTOU su `openfgaClient.storeId` in `deleteStore` — concorrenza su singleton [store-service.ts:11] — deferred, pre-existing
+- [x] [Review][Defer] `hasNavigatedThisSession`: ri-selezione dello store attivo scatena redirect inatteso [stores.ts:selectStore] — deferred, pre-existing
+- [x] [Review][Defer] Cancel durante DELETE in-flight causa aggiornamento stale di `storeList` [StoreAdmin.vue + stores.ts] — deferred, pre-existing
+- [x] [Review][Defer] ConfirmDialog message leggermente diverso dallo spec AC#3 — deferred, pre-existing
 
 ### Change Log
 

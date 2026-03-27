@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-26
-last_updated: 2026-03-26T19:20:00Z
+last_updated: 2026-03-27T16:00:00Z
 project: openfga-viewer
 project_key: NOKEY
 tracking_system: file-system
@@ -43,27 +43,27 @@ story_location: _bmad-output/implementation-artifacts
 
 development_status:
   # Epic 1: Connect and Manage Stores
-  epic-1: in-progress
-  1-1-project-scaffolding-and-dev-environment: review
-  1-2-backend-proxy-core-and-connection-management: review
-  1-3-design-system-foundation-and-base-components: review
-  1-4-app-shell-layout-and-navigation: review
-  1-5-connection-status-and-runtime-configuration: review
-  1-6-store-administration: review
+  epic-1: done
+  1-1-project-scaffolding-and-dev-environment: done
+  1-2-backend-proxy-core-and-connection-management: done
+  1-3-design-system-foundation-and-base-components: done
+  1-4-app-shell-layout-and-navigation: done
+  1-5-connection-status-and-runtime-configuration: done
+  1-6-store-administration: done
   epic-1-retrospective: optional
 
   # Epic 2: Visualize Authorization Models
-  epic-2: backlog
-  2-1-backend-model-endpoint-and-dsl-conversion: backlog
-  2-2-model-dsl-view-with-syntax-highlighting: backlog
-  2-3-model-graph-view-with-interactive-nodes: backlog
+  epic-2: done
+  2-1-backend-model-endpoint-and-dsl-conversion: done
+  2-2-model-dsl-view-with-syntax-highlighting: done
+  2-3-model-graph-view-with-interactive-nodes: done
   epic-2-retrospective: optional
 
   # Epic 3: Manage Tuples
-  epic-3: backlog
-  3-1-backend-tuple-endpoints: backlog
-  3-2-tuple-table-with-filtering-and-pagination: backlog
-  3-3-add-and-delete-tuples: backlog
+  epic-3: in-progress
+  3-1-backend-tuple-endpoints: ready-for-dev
+  3-2-tuple-table-with-filtering-and-pagination: ready-for-dev
+  3-3-add-and-delete-tuples: ready-for-dev
   epic-3-retrospective: optional
 
   # Epic 4: Query Permissions

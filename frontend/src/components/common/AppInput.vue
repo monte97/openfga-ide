@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import { computed } from 'vue'
+
 const props = withDefaults(defineProps<{
   modelValue?: string
   monospace?: boolean
@@ -17,8 +19,8 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const inputId = props.id ?? `input-${Math.random().toString(36).slice(2, 9)}`
-const errorId = `${inputId}-error`
+const inputId = computed(() => props.id ?? `input-${Math.random().toString(36).slice(2, 9)}`)
+const errorId = computed(() => `${inputId.value}-error`)
 </script>
 
 <template>

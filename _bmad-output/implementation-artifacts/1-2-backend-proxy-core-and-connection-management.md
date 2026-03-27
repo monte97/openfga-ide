@@ -1,6 +1,6 @@
 # Story 1.2: Backend Proxy Core and Connection Management
 
-Status: review
+Status: done
 
 ## Story
 
@@ -157,6 +157,21 @@ Claude Opus 4.6 (1M context)
 - Connection routes: GET /api/connection (status), POST /api/connection/test (connectivity check)
 - API types: ErrorEnvelope, ConnectionStatus, StoreInfo, ListStoresResponse
 - All tests co-located next to source files per architecture spec
+
+### Review Findings
+
+- [x] [Review][Patch] No fetch timeout on OpenFGA calls — hang risk under network failures [openfga-client.ts:40,47,58,80]
+- [x] [Review][Patch] Race condition on concurrent PUT /api/connection — `updateUrl` mutates singleton before `testConnection` resolves [connection.ts:31-32]
+- [x] [Review][Patch] `handleResponse` calls `res.json()` unconditionally — throws SyntaxError on 204 No Content [openfga-client.ts:67]
+- [x] [Review][Patch] `PORT` env var silently becomes NaN when non-numeric — `parseInt('abc', 10)` returns NaN, no validation [config.ts:4]
+- [x] [Review][Patch] `console.log` in server.ts instead of `logger.info` [server.ts:5]
+- [x] [Review][Patch] Upstream OpenFGA error body forwarded verbatim in 502 — potential info leak of internal error details [connection.ts:22-25]
+- [x] [Review][Defer] Pagination / continuation_token not handled in `get()` — deferred, pre-existing [openfga-client.ts:37]
+- [x] [Review][Defer] `req.body as { url: string }` cast redundancy after Zod validation — deferred, pre-existing [connection.ts:17,30]
+- [x] [Review][Defer] Stack trace not included in error handler logs — deferred, pre-existing [middleware/error-handler.ts:14]
+- [x] [Review][Defer] Empty storeId returned in GET /api/connection when OPENFGA_STORE_ID not set — deferred, pre-existing [connection.ts:11]
+- [x] [Review][Defer] `validate` middleware not applied to stores route (not yet created) — deferred, scope of future story [routes/stores.ts]
+- [x] [Review][Defer] `updateApiKey` method exists but no endpoint triggers it — deferred, pre-existing dead code [openfga-client.ts:23-25]
 
 ### Change Log
 

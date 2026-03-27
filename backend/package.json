@@ -11,6 +11,8 @@
     "mutate": "stryker run"
   },
   "dependencies": {
+    "@openfga/sdk": "0.9.3",
+    "@openfga/syntax-transformer": "0.2.1",
     "dotenv": "^16.4.7",
     "express": "^5.1.0",
     "pino": "^10.3.1",

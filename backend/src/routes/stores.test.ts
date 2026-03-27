@@ -21,7 +21,7 @@ vi.mock('../services/store-service.js', () => ({
 }))
 
 const { openfgaClient } = await import('../services/openfga-client.js')
-const mockClient = openfgaClient as { get: ReturnType<typeof vi.fn> }
+const mockClient = openfgaClient as unknown as { get: ReturnType<typeof vi.fn> }
 
 const { createStore: mockCreateStore, deleteStore: mockDeleteStore } = await import('../services/store-service.js') as {
   createStore: ReturnType<typeof vi.fn>

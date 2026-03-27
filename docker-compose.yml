@@ -19,6 +19,8 @@ services:
       - backend_modules:/app/backend/node_modules
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
       - OPENFGA_URL=http://openfga:8080
       - PORT=3000

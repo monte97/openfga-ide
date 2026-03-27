@@ -32,7 +32,7 @@ export const useStoresStore = defineStore('stores', () => {
     error.value = null
     try {
       const data = await api.get<ListStoresResponse>('stores')
-      storeList.value = data.stores
+      storeList.value = data.stores ?? []
     } catch (err) {
       error.value = (err as Error).message
     } finally {
@@ -43,6 +43,8 @@ export const useStoresStore = defineStore('stores', () => {
   async function createStore(name: string): Promise<StoreInfo> {
     const store = await api.post<StoreInfo>('stores', { name })
     storeList.value.push(store)
+    const connectionStore = useConnectionStore()
+    connectionStore.stores.push(store)
     toast.show({ type: 'success', message: 'Store created' })
     return store
   }
@@ -50,6 +52,8 @@ export const useStoresStore = defineStore('stores', () => {
   async function deleteStore(storeId: string): Promise<void> {
     await api.del<void>(`stores/${storeId}`)
     storeList.value = storeList.value.filter((s) => s.id !== storeId)
+    const connectionStore = useConnectionStore()
+    connectionStore.stores = connectionStore.stores.filter((s) => s.id !== storeId)
     toast.show({ type: 'success', message: 'Store deleted' })
   }
 

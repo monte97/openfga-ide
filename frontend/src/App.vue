@@ -39,19 +39,27 @@ function syncSidebar() {
   sidebarCollapsed.value = localStorage.getItem('sidebar-collapsed') === 'true'
 }
 
+function handleCtrlB(e: KeyboardEvent) {
+  if (e.ctrlKey && e.key === 'b') {
+    // Defer to next tick so sidebar has updated localStorage first
+    setTimeout(syncSidebar, 50)
+  }
+}
+
+function handleSidebarToggle() {
+  syncSidebar()
+}
+
 onMounted(() => {
   window.addEventListener('storage', syncSidebar)
-  // Also sync from sidebar keydown toggle — poll localStorage on keydown
-  window.addEventListener('keydown', (e) => {
-    if (e.ctrlKey && e.key === 'b') {
-      // Defer to next tick so sidebar has updated localStorage first
-      setTimeout(syncSidebar, 50)
-    }
-  })
+  window.addEventListener('keydown', handleCtrlB)
+  window.addEventListener('sidebar-toggle', handleSidebarToggle)
 })
 
 onUnmounted(() => {
   window.removeEventListener('storage', syncSidebar)
+  window.removeEventListener('keydown', handleCtrlB)
+  window.removeEventListener('sidebar-toggle', handleSidebarToggle)
 })
 </script>
 
@@ -68,6 +76,7 @@ onUnmounted(() => {
 
   <main
     id="main-content"
+    tabindex="-1"
     :class="[
       'min-h-screen pt-14 transition-all duration-200',
       sidebarCollapsed ? 'pl-16' : 'pl-60',

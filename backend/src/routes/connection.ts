@@ -21,27 +21,25 @@ router.post('/api/connection/test', validate(testConnectionSchema), async (req, 
   } catch (err) {
     res.status(502).json({
       error: 'Connection failed',
-      details: (err as Error).message,
+      details: 'Could not reach OpenFGA instance',
     })
   }
 })
 
 router.put('/api/connection', validate(updateConnectionSchema), async (req, res) => {
   const { url } = req.body as { url: string }
-  const previousUrl = openfgaClient.url
-  openfgaClient.updateUrl(url)
   try {
-    await openfgaClient.testConnection()
+    await openfgaClient.testConnection(url)
+    openfgaClient.updateUrl(url)
     res.json({
       url: openfgaClient.url,
       storeId: openfgaClient.storeId,
       status: 'connected',
     })
   } catch (err) {
-    openfgaClient.updateUrl(previousUrl)
     res.status(502).json({
       error: 'Connection failed',
-      details: (err as Error).message,
+      details: 'Could not reach OpenFGA instance',
     })
   }
 })

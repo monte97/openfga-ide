@@ -1,6 +1,6 @@
 # Story 1.4: App Shell Layout and Navigation
 
-Status: review
+Status: done
 
 ## Story
 
@@ -236,6 +236,14 @@ Claude Sonnet 4.6
 - AppSidebar: 240px/64px collapsible with Tailwind transition, 6 nav items with Lucide icons, active state via router path match, localStorage persistence, auto-collapse on <1280px, Ctrl+B keyboard shortcut
 - App.vue: skip-to-content link, viewport warning banner (<1024px), ToastContainer, main margin synced with sidebar state
 - useApi: fetch wrapper with /api/ prefix, error envelope parsing, toast on error, typed returns
+
+### Review Findings
+
+- [x] [Review][Patch] Keydown listener anonimo per Ctrl+B in App.vue mai rimosso — memory leak [App.vue:50-58]
+- [x] [Review][Patch] Sidebar button click desync — toggle via pulsante scrive localStorage ma non aggiorna `sidebarCollapsed` in App.vue (storage event non scatta same-tab) [App.vue + AppSidebar.vue]
+- [x] [Review][Patch] Skip-link target `#main-content` manca `tabindex="-1"` — `<main>` non è focusabile nativamente [App.vue]
+- [x] [Review][Defer] AppTabs selectedIndex=-1 non gestito — comportamento Headless UI undefined con modelValue non trovato [AppTabs.vue] — deferred, pre-existing
+- [x] [Review][Defer] Route lazy-loaded senza error boundary — import dinamici falliti producono pagina bianca senza feedback [router/index.ts] — deferred, pre-existing
 
 ### Change Log
 
