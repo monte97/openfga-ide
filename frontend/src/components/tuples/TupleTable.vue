@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useVueTable, getCoreRowModel, createColumnHelper, FlexRender } from '@tanstack/vue-table'
 import { Trash2 } from 'lucide-vue-next'
 import TypeBadge from '@/components/common/TypeBadge.vue'
@@ -74,7 +74,9 @@ function loadMore() {
   }
 }
 
-defineExpose({ getSelectedTuples, clearSelection })
+const selectedCount = computed(() => Object.keys(rowSelection.value).filter((k) => rowSelection.value[k]).length)
+
+defineExpose({ getSelectedTuples, clearSelection, selectedCount })
 </script>
 
 <template>

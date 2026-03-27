@@ -1,6 +1,6 @@
 # Story 3.1: Backend Tuple Endpoints
 
-Status: review
+Status: done
 
 ## Story
 
@@ -97,6 +97,11 @@ so that the frontend can display, add, and delete tuples on any store.
   - [x] Test: `DELETE /api/stores/store-01/tuples/batch` with valid body returns 200 with count
   - [x] Test: `DELETE /api/stores/store-01/tuples/batch` with empty array returns 400 validation error
   - [x] Test: When service throws (e.g., store not found), error handler returns appropriate status + error envelope
+
+### Review Findings
+
+- [x] [Review][Patch] pageSize query param forwarded as string — fixed: Number() cast in service
+- [x] [Review][Defer] Single delete response {success} vs batch {deleted} — minor inconsistency, deferred
 
 ## Dev Notes
 
@@ -317,3 +322,4 @@ No issues encountered. All patterns from Story 2.1 applied cleanly.
 
 - 2026-03-27: Story file created — status: ready-for-dev
 - 2026-03-27: Implementation complete — status: review
+- 2026-03-27: Code review complete — status: done

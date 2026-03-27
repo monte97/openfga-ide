@@ -12,8 +12,10 @@ const hasFilters = computed(() =>
   !!(tupleStore.filterType || tupleStore.filterRelation || tupleStore.filterUser),
 )
 let debounceTimer: ReturnType<typeof setTimeout> | undefined
+let skipNextWatch = false
 
 function onFilterChange() {
+  if (skipNextWatch) { skipNextWatch = false; return }
   clearTimeout(debounceTimer)
   debounceTimer = setTimeout(() => {
     if (connectionStore.storeId) {
@@ -24,6 +26,8 @@ function onFilterChange() {
 }
 
 function clearAll() {
+  clearTimeout(debounceTimer)
+  skipNextWatch = true
   tupleStore.clearFilters()
   if (connectionStore.storeId) {
     tupleStore.resetTuples()

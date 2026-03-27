@@ -21,7 +21,7 @@ export async function readTuples(
     if (filters.relation) tupleKey.relation = filters.relation
     if (filters.user) tupleKey.user = filters.user
     if (Object.keys(tupleKey).length > 0) body.tuple_key = tupleKey
-    if (filters.pageSize) body.page_size = filters.pageSize
+    if (filters.pageSize) body.page_size = Number(filters.pageSize)
     if (filters.continuationToken) body.continuation_token = filters.continuationToken
   }
 

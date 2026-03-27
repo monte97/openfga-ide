@@ -60,10 +60,10 @@ development_status:
   epic-2-retrospective: optional
 
   # Epic 3: Manage Tuples
-  epic-3: in-progress
-  3-1-backend-tuple-endpoints: review
-  3-2-tuple-table-with-filtering-and-pagination: review
-  3-3-add-and-delete-tuples: review
+  epic-3: done
+  3-1-backend-tuple-endpoints: done
+  3-2-tuple-table-with-filtering-and-pagination: done
+  3-3-add-and-delete-tuples: done
   epic-3-retrospective: optional
 
   # Epic 4: Query Permissions

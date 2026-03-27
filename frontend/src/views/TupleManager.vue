@@ -24,9 +24,7 @@ const hasActiveFilters = computed(() =>
   !!(tupleStore.filterType || tupleStore.filterRelation || tupleStore.filterUser),
 )
 
-const selectedCount = computed(() => {
-  return tupleTableRef.value?.getSelectedTuples()?.length ?? 0
-})
+const selectedCount = computed(() => tupleTableRef.value?.selectedCount ?? 0)
 
 onMounted(() => {
   if (connectionStore.storeId) {

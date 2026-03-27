@@ -1,6 +1,6 @@
 # Story 3.2: Tuple Table with Filtering and Pagination
 
-Status: review
+Status: done
 
 ## Story
 
@@ -112,6 +112,12 @@ so that I can inspect the concrete relationships in my authorization store.
     - [x] Test shows EmptyState when tuples are empty and no filters active
     - [x] Test shows TupleFilterBar + TupleTable when tuples exist
     - [x] Test shows TupleFilterBar + TupleTable when filters are active (even if tuples empty — so user can clear filters)
+
+### Review Findings
+
+- [x] [Review][Patch] clearFilters missing fetchTuples call + double-fetch race on clearAll — fixed: skipNextWatch flag + clearTimeout
+- [x] [Review][Defer] Raw input vs AppInput in FilterBar — functional, deferred
+- [x] [Review][Defer] Test coverage for debounce timing — deferred
 
 ## Dev Notes
 
@@ -358,3 +364,4 @@ claude-sonnet-4-6
 
 - 2026-03-27: Story file created — status: ready-for-dev
 - 2026-03-27: Implementation complete — status: review
+- 2026-03-27: Code review complete — status: done

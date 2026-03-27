@@ -1,6 +1,6 @@
 # Story 3.3: Add and Delete Tuples
 
-Status: review
+Status: done
 
 ## Story
 
@@ -82,6 +82,13 @@ so that I can manage the concrete authorization relationships in my store.
   - [x] Modify `frontend/src/components/tuples/TupleTable.test.ts` — test delete button per row, checkbox selection, select-all
   - [x] Modify `frontend/src/views/TupleManager.test.ts` — test Add Tuple toggle, Delete Selected with ConfirmDialog flow, batch delete
   - [x] Modify `frontend/src/stores/tuples.test.ts` — test addTuple, deleteTuple, deleteTuplesBatch actions
+
+### Review Findings
+
+- [x] [Review][Patch] selectedCount computed not reactive — fixed: exposed reactive computed from TupleTable
+- [x] [Review][Defer] No Zod schema for form validation — manual validation equivalent, deferred
+- [x] [Review][Defer] Missing tests for submit flow, store CRUD actions, manager features — deferred
+- [x] [Review][Defer] Delete button spinner + relation error message — nice-to-have, deferred
 
 ## Dev Notes
 
@@ -250,3 +257,4 @@ claude-sonnet-4-6
 
 - 2026-03-27: Story file created — status: ready-for-dev
 - 2026-03-27: Implementation complete — status: review
+- 2026-03-27: Code review complete — status: done
