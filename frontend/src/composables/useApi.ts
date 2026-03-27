@@ -62,10 +62,15 @@ export function useApi() {
     return res.json() as Promise<T>
   }
 
-  async function del<T>(path: string): Promise<T> {
+  async function del<T>(path: string, body?: unknown): Promise<T> {
     let res: Response
     try {
-      res = await fetch(`/api/${path}`, { method: 'DELETE' })
+      const options: RequestInit = { method: 'DELETE' }
+      if (body !== undefined) {
+        options.headers = { 'Content-Type': 'application/json' }
+        options.body = JSON.stringify(body)
+      }
+      res = await fetch(`/api/${path}`, options)
     } catch {
       toast.show({ type: 'error', message: 'Network error' })
       throw new Error('Network error')

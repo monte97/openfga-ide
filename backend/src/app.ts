@@ -2,6 +2,7 @@ import express from 'express'
 import connectionRoutes from './routes/connection.js'
 import storesRoutes from './routes/stores.js'
 import modelRouter from './routes/model.js'
+import tupleRouter from './routes/tuples.js'
 import { errorHandler } from './middleware/error-handler.js'
 
 const app = express()
@@ -15,6 +16,7 @@ app.get('/api/health', (_req, res) => {
 app.use(connectionRoutes)
 app.use(storesRoutes)
 app.use('/api/stores/:storeId/model', modelRouter)
+app.use('/api/stores/:storeId/tuples', tupleRouter)
 
 app.use(errorHandler)
 

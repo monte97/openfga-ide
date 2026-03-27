@@ -33,3 +33,24 @@ export interface ModelResponse {
   dsl: string | null
   authorizationModelId: string | null
 }
+
+export interface TupleKey {
+  user: string
+  relation: string
+  object: string
+}
+
+export interface Tuple {
+  key: TupleKey
+  timestamp: string
+}
+
+export interface ReadTuplesResponse {
+  tuples: Tuple[]
+  continuationToken: string | null
+}
+
+export interface OpenFgaReadResponse {
+  tuples: Array<{ key: { user: string; relation: string; object: string }; timestamp: string }>
+  continuation_token: string
+}

@@ -1,6 +1,6 @@
 # Story 3.2: Tuple Table with Filtering and Pagination
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -26,92 +26,92 @@ so that I can inspect the concrete relationships in my authorization store.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Install TanStack Table for Vue 3 (AC: #1, #4)
-  - [ ] Run `npm install @tanstack/vue-table` in the `frontend/` package
-  - [ ] Verify `@tanstack/vue-table` v8.x is installed (headless, no UI — we provide Tailwind styling)
+- [x] Task 1: Install TanStack Table for Vue 3 (AC: #1, #4)
+  - [x] Run `npm install @tanstack/vue-table` in the `frontend/` package
+  - [x] Verify `@tanstack/vue-table` v8.x is installed (headless, no UI — we provide Tailwind styling)
 
-- [ ] Task 2: Create Pinia tuple store — `frontend/src/stores/tuples.ts` (AC: #1, #3, #4, #5, #6)
-  - [ ] Define store with setup syntax: `loading: ref<boolean>(false)`, `error: ref<string | null>(null)`, `tuples: ref<TupleEntry[]>([])`, `continuationToken: ref<string | null>(null)`, `hasMore: computed(() => continuationToken.value !== null)`
-  - [ ] Filter state (persisted across navigation): `filterType: ref<string>('')`, `filterRelation: ref<string>('')`, `filterUser: ref<string>('')`
-  - [ ] `pageSize` constant: `50` (default page size for tuple reads)
-  - [ ] Action `fetchTuples(storeId: string)` — calls `api.post<ReadTuplesResponse>(\`stores/${storeId}/tuples/read\`, buildTupleKey())`. On success: sets `tuples.value` and `continuationToken.value`. On error: sets `error.value`, clears tuples
-  - [ ] Action `fetchNextPage(storeId: string)` — same as `fetchTuples` but includes `continuation_token` in the request body. **Appends** new tuples to existing `tuples.value` (does not replace)
-  - [ ] Action `resetTuples()` — clears tuples, continuationToken, error. Does NOT clear filters (filters persist per UX-DR14)
-  - [ ] Action `clearFilters()` — resets all three filter refs to empty string, then calls `fetchTuples`
-  - [ ] Helper `buildTupleKey()` — constructs the request body: `{ tuple_key: { type, relation, user }, page_size, continuation_token? }`. Only include non-empty filter fields in `tuple_key`
-  - [ ] Export TypeScript interfaces: `TupleEntry { key: { user: string; relation: string; object: string }; timestamp: string }`, `ReadTuplesResponse { tuples: TupleEntry[]; continuation_token: string | null }`
-  - [ ] Co-locate test file: `frontend/src/stores/tuples.test.ts`
+- [x] Task 2: Create Pinia tuple store — `frontend/src/stores/tuples.ts` (AC: #1, #3, #4, #5, #6)
+  - [x] Define store with setup syntax: `loading: ref<boolean>(false)`, `error: ref<string | null>(null)`, `tuples: ref<TupleEntry[]>([])`, `continuationToken: ref<string | null>(null)`, `hasMore: computed(() => continuationToken.value !== null)`
+  - [x] Filter state (persisted across navigation): `filterType: ref<string>('')`, `filterRelation: ref<string>('')`, `filterUser: ref<string>('')`
+  - [x] `pageSize` constant: `50` (default page size for tuple reads)
+  - [x] Action `fetchTuples(storeId: string)` — calls `api.post<ReadTuplesResponse>(\`stores/${storeId}/tuples/read\`, buildTupleKey())`. On success: sets `tuples.value` and `continuationToken.value`. On error: sets `error.value`, clears tuples
+  - [x] Action `fetchNextPage(storeId: string)` — same as `fetchTuples` but includes `continuation_token` in the request body. **Appends** new tuples to existing `tuples.value` (does not replace)
+  - [x] Action `resetTuples()` — clears tuples, continuationToken, error. Does NOT clear filters (filters persist per UX-DR14)
+  - [x] Action `clearFilters()` — resets all three filter refs to empty string, then calls `fetchTuples`
+  - [x] Helper `buildTupleKey()` — constructs the request body: `{ tuple_key: { type, relation, user }, page_size, continuation_token? }`. Only include non-empty filter fields in `tuple_key`
+  - [x] Export TypeScript interfaces: `TupleEntry { key: { user: string; relation: string; object: string }; timestamp: string }`, `ReadTuplesResponse { tuples: TupleEntry[]; continuation_token: string | null }`
+  - [x] Co-locate test file: `frontend/src/stores/tuples.test.ts`
 
-- [ ] Task 3: Create `TupleTable.vue` component (AC: #1, #2, #3, #4)
-  - [ ] Create `frontend/src/components/tuples/TupleTable.vue`
-  - [ ] Set up TanStack Table with `useVueTable` from `@tanstack/vue-table`:
+- [x] Task 3: Create `TupleTable.vue` component (AC: #1, #2, #3, #4)
+  - [x] Create `frontend/src/components/tuples/TupleTable.vue`
+  - [x] Set up TanStack Table with `useVueTable` from `@tanstack/vue-table`:
     - Column definitions: `user` (with TypeBadge), `relation` (plain text), `object` (with TypeBadge)
     - Data source: `tupleStore.tuples`
     - Manual pagination (server-side — we control it via continuation tokens, not TanStack's built-in client-side pagination)
-  - [ ] Render table with Tailwind classes: `border-surface-border`, `bg-surface-card`, `text-text-primary`, `font-mono text-sm` for cell content
-  - [ ] Table header: `bg-surface-elevated`, `text-text-secondary`, `text-xs uppercase`
-  - [ ] Row hover: `hover:bg-surface-elevated/50`
-  - [ ] TypeBadge integration: extract type name from `user:alice` → type is `user`, from `document:roadmap` → type is `document`. Use `identifier.split(':')[0]` to get type name, render full identifier in monospace after the badge
-  - [ ] Pagination controls at bottom: "Load More" button (visible only when `tupleStore.hasMore`), showing current count: "Showing {n} tuples"
-  - [ ] Co-locate test file: `frontend/src/components/tuples/TupleTable.test.ts`
+  - [x] Render table with Tailwind classes: `border-surface-border`, `bg-surface-card`, `text-text-primary`, `font-mono text-sm` for cell content
+  - [x] Table header: `bg-surface-elevated`, `text-text-secondary`, `text-xs uppercase`
+  - [x] Row hover: `hover:bg-surface-elevated/50`
+  - [x] TypeBadge integration: extract type name from `user:alice` → type is `user`, from `document:roadmap` → type is `document`. Use `identifier.split(':')[0]` to get type name, render full identifier in monospace after the badge
+  - [x] Pagination controls at bottom: "Load More" button (visible only when `tupleStore.hasMore`), showing current count: "Showing {n} tuples"
+  - [x] Co-locate test file: `frontend/src/components/tuples/TupleTable.test.ts`
 
-- [ ] Task 4: Create `TupleFilterBar.vue` component (AC: #2, #3)
-  - [ ] Create `frontend/src/components/tuples/TupleFilterBar.vue`
-  - [ ] Three `AppInput` fields in a horizontal row: Type, Relation, User — each with monospace font (`font-mono`)
-  - [ ] Each input has placeholder: `"Filter by type..."`, `"Filter by relation..."`, `"Filter by user..."`
-  - [ ] Each input has a clear (X) button that appears when the field has content (use Lucide `X` icon inside the input)
-  - [ ] Bind inputs to `tupleStore.filterType`, `tupleStore.filterRelation`, `tupleStore.filterUser` via `v-model`
-  - [ ] On filter change: debounce 300ms, then call `tupleStore.fetchTuples(storeId)` to re-fetch with new filters (resets pagination)
-  - [ ] "Clear All" button visible when any filter is active — calls `tupleStore.clearFilters()`
-  - [ ] Co-locate test file: `frontend/src/components/tuples/TupleFilterBar.test.ts`
+- [x] Task 4: Create `TupleFilterBar.vue` component (AC: #2, #3)
+  - [x] Create `frontend/src/components/tuples/TupleFilterBar.vue`
+  - [x] Three `AppInput` fields in a horizontal row: Type, Relation, User — each with monospace font (`font-mono`)
+  - [x] Each input has placeholder: `"Filter by type..."`, `"Filter by relation..."`, `"Filter by user..."`
+  - [x] Each input has a clear (X) button that appears when the field has content (use Lucide `X` icon inside the input)
+  - [x] Bind inputs to `tupleStore.filterType`, `tupleStore.filterRelation`, `tupleStore.filterUser` via `v-model`
+  - [x] On filter change: debounce 300ms, then call `tupleStore.fetchTuples(storeId)` to re-fetch with new filters (resets pagination)
+  - [x] "Clear All" button visible when any filter is active — calls `tupleStore.clearFilters()`
+  - [x] Co-locate test file: `frontend/src/components/tuples/TupleFilterBar.test.ts`
 
-- [ ] Task 5: Rewrite `TupleManager.vue` view (AC: #1, #2, #5, #6, #7)
-  - [ ] REWRITE `frontend/src/views/TupleManager.vue` (currently a placeholder with two EmptyStates)
-  - [ ] Import and use `useTupleStore` and `useConnectionStore`
-  - [ ] On mount (`onMounted`): if `connectionStore.storeId` is set, call `tupleStore.fetchTuples(connectionStore.storeId)`
-  - [ ] Watch `connectionStore.storeId`: when storeId changes to non-empty string, call `tupleStore.fetchTuples(newStoreId)`; when storeId becomes empty, call `tupleStore.resetTuples()`
-  - [ ] If `!connectionStore.storeId`: render EmptyState (icon: `Settings`, "No store selected", actionTo: `/store-admin`) — same pattern as ModelViewer
-  - [ ] If `connectionStore.storeId` is set and `tupleStore.loading` (first load): show `<LoadingSpinner :full-view="true" />`
-  - [ ] If store is set, not loading, and `tupleStore.tuples.length === 0` and no filters active: render EmptyState (icon: `Database`, title: "No tuples in this store", message: "Add tuples to get started", with two actions — "Add Tuple" emits event (placeholder for Story 3.3), "Go to Import/Export" actionTo: `/import-export`)
-  - [ ] If store is set and tuples exist (or filters are active): render `<TupleFilterBar />` + `<TupleTable />`
-  - [ ] Page title: "Tuple Manager" in `text-xl font-semibold text-text-emphasis`
-  - [ ] Co-locate test file: `frontend/src/views/TupleManager.test.ts`
+- [x] Task 5: Rewrite `TupleManager.vue` view (AC: #1, #2, #5, #6, #7)
+  - [x] REWRITE `frontend/src/views/TupleManager.vue` (currently a placeholder with two EmptyStates)
+  - [x] Import and use `useTupleStore` and `useConnectionStore`
+  - [x] On mount (`onMounted`): if `connectionStore.storeId` is set, call `tupleStore.fetchTuples(connectionStore.storeId)`
+  - [x] Watch `connectionStore.storeId`: when storeId changes to non-empty string, call `tupleStore.fetchTuples(newStoreId)`; when storeId becomes empty, call `tupleStore.resetTuples()`
+  - [x] If `!connectionStore.storeId`: render EmptyState (icon: `Settings`, "No store selected", actionTo: `/store-admin`) — same pattern as ModelViewer
+  - [x] If `connectionStore.storeId` is set and `tupleStore.loading` (first load): show `<LoadingSpinner :full-view="true" />`
+  - [x] If store is set, not loading, and `tupleStore.tuples.length === 0` and no filters active: render EmptyState (icon: `Database`, title: "No tuples in this store", message: "Add tuples to get started", with two actions — "Add Tuple" emits event (placeholder for Story 3.3), "Go to Import/Export" actionTo: `/import-export`)
+  - [x] If store is set and tuples exist (or filters are active): render `<TupleFilterBar />` + `<TupleTable />`
+  - [x] Page title: "Tuple Manager" in `text-xl font-semibold text-text-emphasis`
+  - [x] Co-locate test file: `frontend/src/views/TupleManager.test.ts`
 
-- [ ] Task 6: Tests — tuple store (AC: #1, #3, #4, #5, #6)
-  - [ ] `frontend/src/stores/tuples.test.ts`:
-    - [ ] Test `fetchTuples` with successful response: verifies tuples and continuationToken are set
-    - [ ] Test `fetchTuples` with filters: verifies request body includes correct `tuple_key` fields
-    - [ ] Test `fetchNextPage` appends tuples to existing list (does not replace)
-    - [ ] Test `fetchNextPage` sends continuation_token in request body
-    - [ ] Test `resetTuples` clears tuples/token/error but preserves filters
-    - [ ] Test `clearFilters` resets all filter refs to empty string
-    - [ ] Test `loading` flag: true during fetch, false after
-    - [ ] Test error handling: sets error.value, clears tuples
+- [x] Task 6: Tests — tuple store (AC: #1, #3, #4, #5, #6)
+  - [x] `frontend/src/stores/tuples.test.ts`:
+    - [x] Test `fetchTuples` with successful response: verifies tuples and continuationToken are set
+    - [x] Test `fetchTuples` with filters: verifies request body includes correct `tuple_key` fields
+    - [x] Test `fetchNextPage` appends tuples to existing list (does not replace)
+    - [x] Test `fetchNextPage` sends continuation_token in request body
+    - [x] Test `resetTuples` clears tuples/token/error but preserves filters
+    - [x] Test `clearFilters` resets all filter refs to empty string
+    - [x] Test `loading` flag: true during fetch, false after
+    - [x] Test error handling: sets error.value, clears tuples
 
-- [ ] Task 7: Tests — TupleTable component (AC: #1, #4)
-  - [ ] `frontend/src/components/tuples/TupleTable.test.ts`:
-    - [ ] Test renders table headers (User, Relation, Object)
-    - [ ] Test renders tuple rows with correct data
-    - [ ] Test renders TypeBadge for user and object columns
-    - [ ] Test "Load More" button visible when hasMore is true
-    - [ ] Test "Load More" button hidden when hasMore is false
-    - [ ] Test shows tuple count text
+- [x] Task 7: Tests — TupleTable component (AC: #1, #4)
+  - [x] `frontend/src/components/tuples/TupleTable.test.ts`:
+    - [x] Test renders table headers (User, Relation, Object)
+    - [x] Test renders tuple rows with correct data
+    - [x] Test renders TypeBadge for user and object columns
+    - [x] Test "Load More" button visible when hasMore is true
+    - [x] Test "Load More" button hidden when hasMore is false
+    - [x] Test shows tuple count text
 
-- [ ] Task 8: Tests — TupleFilterBar component (AC: #2, #3)
-  - [ ] `frontend/src/components/tuples/TupleFilterBar.test.ts`:
-    - [ ] Test renders three filter inputs with correct placeholders
-    - [ ] Test clear button appears when input has content
-    - [ ] Test "Clear All" button visible when any filter is active
-    - [ ] Test "Clear All" button hidden when no filters are active
+- [x] Task 8: Tests — TupleFilterBar component (AC: #2, #3)
+  - [x] `frontend/src/components/tuples/TupleFilterBar.test.ts`:
+    - [x] Test renders three filter inputs with correct placeholders
+    - [x] Test clear button appears when input has content
+    - [x] Test "Clear All" button visible when any filter is active
+    - [x] Test "Clear All" button hidden when no filters are active
 
-- [ ] Task 9: Tests — TupleManager view (AC: #5, #6, #7)
-  - [ ] `frontend/src/views/TupleManager.test.ts`:
-    - [ ] Test renders "No store selected" EmptyState when storeId is empty
-    - [ ] Test calls `tupleStore.fetchTuples` on mount when store is selected
-    - [ ] Test shows LoadingSpinner when `tupleStore.loading` is true
-    - [ ] Test shows EmptyState when tuples are empty and no filters active
-    - [ ] Test shows TupleFilterBar + TupleTable when tuples exist
-    - [ ] Test shows TupleFilterBar + TupleTable when filters are active (even if tuples empty — so user can clear filters)
+- [x] Task 9: Tests — TupleManager view (AC: #5, #6, #7)
+  - [x] `frontend/src/views/TupleManager.test.ts`:
+    - [x] Test renders "No store selected" EmptyState when storeId is empty
+    - [x] Test calls `tupleStore.fetchTuples` on mount when store is selected
+    - [x] Test shows LoadingSpinner when `tupleStore.loading` is true
+    - [x] Test shows EmptyState when tuples are empty and no filters active
+    - [x] Test shows TupleFilterBar + TupleTable when tuples exist
+    - [x] Test shows TupleFilterBar + TupleTable when filters are active (even if tuples empty — so user can clear filters)
 
 ## Dev Notes
 
@@ -326,12 +326,35 @@ frontend/package.json: +@tanstack/vue-table (production dependency)
 
 ### Agent Model Used
 
+claude-sonnet-4-6
+
 ### Debug Log References
+
+1. **Backend API mismatch**: Story spec assumed `POST /tuples/read` but backend (Story 3.1) exposes `GET /tuples` with query params. Adapted store to use `api.get` with URLSearchParams.
+2. **TupleFilterBar hasFilters**: Used local `ref` initially, watcher timing caused test failure. Fixed by using `computed` derived from store filter values.
 
 ### Completion Notes List
 
+- `@tanstack/vue-table` installed; TupleTable uses `useVueTable` with manual pagination
+- Pinia tuple store: `fetchTuples` (GET with query params), `fetchNextPage` (appends), `resetTuples` (preserves filters), `clearFilters`
+- TupleTable: TanStack Table with TypeBadge in user/object columns, "Load More" button, tuple count
+- TupleFilterBar: 3 monospace inputs with clear X buttons, computed `hasFilters`, 300ms debounce, "Clear All"
+- TupleManager: rewritten with store watcher, loading/empty/data states
+- 177 frontend tests pass; 24 new tests added
+
 ### File List
+
+- `frontend/package.json` — MODIFIED: added `@tanstack/vue-table`
+- `frontend/src/stores/tuples.ts` — NEW: Pinia tuple store
+- `frontend/src/stores/tuples.test.ts` — NEW: 8 unit tests
+- `frontend/src/components/tuples/TupleTable.vue` — NEW: TanStack Table with TypeBadge
+- `frontend/src/components/tuples/TupleTable.test.ts` — NEW: 6 component tests
+- `frontend/src/components/tuples/TupleFilterBar.vue` — NEW: 3 filter inputs with debounce
+- `frontend/src/components/tuples/TupleFilterBar.test.ts` — NEW: 4 component tests
+- `frontend/src/views/TupleManager.vue` — REWRITTEN: full implementation
+- `frontend/src/views/TupleManager.test.ts` — NEW: 6 view tests
 
 ### Change Log
 
 - 2026-03-27: Story file created — status: ready-for-dev
+- 2026-03-27: Implementation complete — status: review

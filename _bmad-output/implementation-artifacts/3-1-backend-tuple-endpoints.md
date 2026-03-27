@@ -1,6 +1,6 @@
 # Story 3.1: Backend Tuple Endpoints
 
-Status: ready-for-dev
+Status: review
 
 ## Story
 
@@ -24,23 +24,23 @@ so that the frontend can display, add, and delete tuples on any store.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: TypeScript types for tuple domain (AC: #1, #2, #3, #4, #5)
-  - [ ] In `backend/src/types/openfga.ts` (MODIFY existing file), add:
+- [x] Task 1: TypeScript types for tuple domain (AC: #1, #2, #3, #4, #5)
+  - [x] In `backend/src/types/openfga.ts` (MODIFY existing file), add:
     - `TupleKey` — `{ user: string, relation: string, object: string }`
     - `Tuple` — `{ key: TupleKey, timestamp: string }` (as returned by OpenFGA Read API)
     - `ReadTuplesResponse` — `{ tuples: Tuple[], continuationToken: string | null }` (our backend response shape, camelCase)
     - `OpenFgaReadResponse` — `{ tuples: Array<{ key: { user: string, relation: string, object: string }, timestamp: string }>, continuation_token: string }` (raw OpenFGA shape, snake_case)
 
-- [ ] Task 2: Zod schemas for tuple routes (AC: #1, #2, #3, #4, #5, #6)
-  - [ ] Create `backend/src/schemas/tuple.ts`
-  - [ ] `tupleParamsSchema` — `{ storeId: z.string().min(1) }` for route params
-  - [ ] `tupleQuerySchema` — `{ type: z.string().optional(), relation: z.string().optional(), user: z.string().optional(), pageSize: z.coerce.number().int().min(1).max(100).optional(), continuationToken: z.string().optional() }` for GET query params
-  - [ ] `tupleBodySchema` — `{ user: z.string().min(1), relation: z.string().min(1), object: z.string().min(1) }` for POST body and DELETE body
-  - [ ] `tupleBatchDeleteSchema` — `{ deletes: z.array(tupleBodySchema).min(1).max(100) }` for DELETE /batch
+- [x] Task 2: Zod schemas for tuple routes (AC: #1, #2, #3, #4, #5, #6)
+  - [x] Create `backend/src/schemas/tuple.ts`
+  - [x] `tupleParamsSchema` — `{ storeId: z.string().min(1) }` for route params
+  - [x] `tupleQuerySchema` — `{ type: z.string().optional(), relation: z.string().optional(), user: z.string().optional(), pageSize: z.coerce.number().int().min(1).max(100).optional(), continuationToken: z.string().optional() }` for GET query params
+  - [x] `tupleBodySchema` — `{ user: z.string().min(1), relation: z.string().min(1), object: z.string().min(1) }` for POST body and DELETE body
+  - [x] `tupleBatchDeleteSchema` — `{ deletes: z.array(tupleBodySchema).min(1).max(100) }` for DELETE /batch
 
-- [ ] Task 3: `tuple-service.ts` — read, write, delete tuples (AC: #1, #2, #3, #4, #5)
-  - [ ] Create `backend/src/services/tuple-service.ts`
-  - [ ] Implement `readTuples(storeId, filters?)` — calls `openfgaClient.post('/stores/' + storeId + '/read', body)` (NOTE: OpenFGA Read is POST, not GET!)
+- [x] Task 3: `tuple-service.ts` — read, write, delete tuples (AC: #1, #2, #3, #4, #5)
+  - [x] Create `backend/src/services/tuple-service.ts`
+  - [x] Implement `readTuples(storeId, filters?)` — calls `openfgaClient.post('/stores/' + storeId + '/read', body)` (NOTE: OpenFGA Read is POST, not GET!)
     - Build request body: `{ tuple_key: { user?, relation?, object? }, page_size?, continuation_token? }`
     - For `type` filter (from query param): map to `tuple_key.object` prefix — the OpenFGA Read API filters by object type when `object` is set to `<type>:` (with colon). So `type=document` becomes `tuple_key.object = "document:"`
     - For `relation` filter: set `tuple_key.relation`
@@ -49,54 +49,54 @@ so that the frontend can display, add, and delete tuples on any store.
     - If `tuple_key` would be empty (no filters), omit it entirely from the body
     - Transform OpenFGA snake_case response to camelCase: `continuation_token` -> `continuationToken`
     - Return `{ tuples: [...], continuationToken: token || null }`
-  - [ ] Implement `writeTuple(storeId, tupleKey)` — calls `openfgaClient.post('/stores/' + storeId + '/write', { writes: { tuple_keys: [tupleKey] } })`
+  - [x] Implement `writeTuple(storeId, tupleKey)` — calls `openfgaClient.post('/stores/' + storeId + '/write', { writes: { tuple_keys: [tupleKey] } })`
     - Returns the tuple key that was written
-  - [ ] Implement `deleteTuple(storeId, tupleKey)` — calls `openfgaClient.post('/stores/' + storeId + '/write', { deletes: { tuple_keys: [tupleKey] } })`
+  - [x] Implement `deleteTuple(storeId, tupleKey)` — calls `openfgaClient.post('/stores/' + storeId + '/write', { deletes: { tuple_keys: [tupleKey] } })`
     - NOTE: OpenFGA uses the `/write` endpoint for BOTH writes and deletes, with `writes` and `deletes` fields in the body
-  - [ ] Implement `deleteTuplesBatch(storeId, tupleKeys)` — calls `openfgaClient.post('/stores/' + storeId + '/write', { deletes: { tuple_keys: tupleKeys } })`
+  - [x] Implement `deleteTuplesBatch(storeId, tupleKeys)` — calls `openfgaClient.post('/stores/' + storeId + '/write', { deletes: { tuple_keys: tupleKeys } })`
     - Returns `{ deleted: tupleKeys.length }`
 
-- [ ] Task 4: `routes/tuples.ts` — tuple CRUD endpoints (AC: #1, #2, #3, #4, #5, #6)
-  - [ ] Create `backend/src/routes/tuples.ts`
-  - [ ] Use `Router({ mergeParams: true })` — router is mounted at `/api/stores/:storeId/tuples` in `app.ts`
-  - [ ] `GET /` — validate params + query, call `tupleService.readTuples(storeId, filters)`, return 200
-  - [ ] `POST /` — validate params + body, call `tupleService.writeTuple(storeId, tupleKey)`, return 201
-  - [ ] `DELETE /` — validate params + body, call `tupleService.deleteTuple(storeId, tupleKey)`, return 200
-  - [ ] `DELETE /batch` — validate params + body, call `tupleService.deleteTuplesBatch(storeId, tupleKeys)`, return 200
-  - [ ] Apply `validate(tupleParamsSchema, 'params')` to all routes
-  - [ ] Apply `validate(tupleQuerySchema, 'query')` to GET route
-  - [ ] Apply `validate(tupleBodySchema)` to POST and DELETE / routes
-  - [ ] Apply `validate(tupleBatchDeleteSchema)` to DELETE /batch route
-  - [ ] Express 5 async error propagation — no try/catch needed in routes
+- [x] Task 4: `routes/tuples.ts` — tuple CRUD endpoints (AC: #1, #2, #3, #4, #5, #6)
+  - [x] Create `backend/src/routes/tuples.ts`
+  - [x] Use `Router({ mergeParams: true })` — router is mounted at `/api/stores/:storeId/tuples` in `app.ts`
+  - [x] `GET /` — validate params + query, call `tupleService.readTuples(storeId, filters)`, return 200
+  - [x] `POST /` — validate params + body, call `tupleService.writeTuple(storeId, tupleKey)`, return 201
+  - [x] `DELETE /` — validate params + body, call `tupleService.deleteTuple(storeId, tupleKey)`, return 200
+  - [x] `DELETE /batch` — validate params + body, call `tupleService.deleteTuplesBatch(storeId, tupleKeys)`, return 200
+  - [x] Apply `validate(tupleParamsSchema, 'params')` to all routes
+  - [x] Apply `validate(tupleQuerySchema, 'query')` to GET route
+  - [x] Apply `validate(tupleBodySchema)` to POST and DELETE / routes
+  - [x] Apply `validate(tupleBatchDeleteSchema)` to DELETE /batch route
+  - [x] Express 5 async error propagation — no try/catch needed in routes
 
-- [ ] Task 5: Register tuple router in `app.ts` (AC: #1)
-  - [ ] In `backend/src/app.ts`, import and register: `app.use('/api/stores/:storeId/tuples', tupleRouter)` — BEFORE the error handler middleware
+- [x] Task 5: Register tuple router in `app.ts` (AC: #1)
+  - [x] In `backend/src/app.ts`, import and register: `app.use('/api/stores/:storeId/tuples', tupleRouter)` — BEFORE the error handler middleware
 
-- [ ] Task 6: Tests — `tuple-service.test.ts` (AC: #1, #2, #3, #4, #5)
-  - [ ] Create `backend/src/services/tuple-service.test.ts`
-  - [ ] Mock `openfga-client.ts` using Vitest `vi.mock`
-  - [ ] Test: `readTuples` without filters — calls POST `/stores/{id}/read` with empty body, returns transformed response
-  - [ ] Test: `readTuples` with type filter — sends `tuple_key.object = "document:"` (with colon)
-  - [ ] Test: `readTuples` with all filters — sends correct `tuple_key` with user, relation, object
-  - [ ] Test: `readTuples` with pagination params — sends `page_size` and `continuation_token`
-  - [ ] Test: `readTuples` transforms `continuation_token` to `continuationToken` in response
-  - [ ] Test: `writeTuple` — calls POST `/stores/{id}/write` with `{ writes: { tuple_keys: [...] } }`
-  - [ ] Test: `deleteTuple` — calls POST `/stores/{id}/write` with `{ deletes: { tuple_keys: [...] } }`
-  - [ ] Test: `deleteTuplesBatch` — calls POST `/stores/{id}/write` with multiple tuple keys in deletes
-  - [ ] Test: service propagates errors from openfgaClient (do NOT swallow)
+- [x] Task 6: Tests — `tuple-service.test.ts` (AC: #1, #2, #3, #4, #5)
+  - [x] Create `backend/src/services/tuple-service.test.ts`
+  - [x] Mock `openfga-client.ts` using Vitest `vi.mock`
+  - [x] Test: `readTuples` without filters — calls POST `/stores/{id}/read` with empty body, returns transformed response
+  - [x] Test: `readTuples` with type filter — sends `tuple_key.object = "document:"` (with colon)
+  - [x] Test: `readTuples` with all filters — sends correct `tuple_key` with user, relation, object
+  - [x] Test: `readTuples` with pagination params — sends `page_size` and `continuation_token`
+  - [x] Test: `readTuples` transforms `continuation_token` to `continuationToken` in response
+  - [x] Test: `writeTuple` — calls POST `/stores/{id}/write` with `{ writes: { tuple_keys: [...] } }`
+  - [x] Test: `deleteTuple` — calls POST `/stores/{id}/write` with `{ deletes: { tuple_keys: [...] } }`
+  - [x] Test: `deleteTuplesBatch` — calls POST `/stores/{id}/write` with multiple tuple keys in deletes
+  - [x] Test: service propagates errors from openfgaClient (do NOT swallow)
 
-- [ ] Task 7: Tests — `routes/tuples.test.ts` (AC: #1, #2, #3, #4, #5, #6)
-  - [ ] Create `backend/src/routes/tuples.test.ts`
-  - [ ] Mock `tuple-service.ts` using Vitest `vi.mock`
-  - [ ] Use supertest against the Express app
-  - [ ] Test: `GET /api/stores/store-01/tuples` returns 200 with `{ tuples, continuationToken }`
-  - [ ] Test: `GET /api/stores/store-01/tuples?type=user&relation=viewer` passes filters to service
-  - [ ] Test: `POST /api/stores/store-01/tuples` with valid body returns 201
-  - [ ] Test: `POST /api/stores/store-01/tuples` with missing fields returns 400 validation error
-  - [ ] Test: `DELETE /api/stores/store-01/tuples` with valid body returns 200
-  - [ ] Test: `DELETE /api/stores/store-01/tuples/batch` with valid body returns 200 with count
-  - [ ] Test: `DELETE /api/stores/store-01/tuples/batch` with empty array returns 400 validation error
-  - [ ] Test: When service throws (e.g., store not found), error handler returns appropriate status + error envelope
+- [x] Task 7: Tests — `routes/tuples.test.ts` (AC: #1, #2, #3, #4, #5, #6)
+  - [x] Create `backend/src/routes/tuples.test.ts`
+  - [x] Mock `tuple-service.ts` using Vitest `vi.mock`
+  - [x] Use supertest against the Express app
+  - [x] Test: `GET /api/stores/store-01/tuples` returns 200 with `{ tuples, continuationToken }`
+  - [x] Test: `GET /api/stores/store-01/tuples?type=user&relation=viewer` passes filters to service
+  - [x] Test: `POST /api/stores/store-01/tuples` with valid body returns 201
+  - [x] Test: `POST /api/stores/store-01/tuples` with missing fields returns 400 validation error
+  - [x] Test: `DELETE /api/stores/store-01/tuples` with valid body returns 200
+  - [x] Test: `DELETE /api/stores/store-01/tuples/batch` with valid body returns 200 with count
+  - [x] Test: `DELETE /api/stores/store-01/tuples/batch` with empty array returns 400 validation error
+  - [x] Test: When service throws (e.g., store not found), error handler returns appropriate status + error envelope
 
 ## Dev Notes
 
@@ -288,14 +288,32 @@ No frontend files are created in this story. Stories 3.2 (Tuple Table) and 3.3 (
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+claude-sonnet-4-6
 
 ### Debug Log References
 
+No issues encountered. All patterns from Story 2.1 applied cleanly.
+
 ### Completion Notes List
 
+- `TupleKey`, `Tuple`, `ReadTuplesResponse`, `OpenFgaReadResponse` types added to `openfga.ts`
+- Zod schemas: `tupleParamsSchema`, `tupleQuerySchema`, `tupleBodySchema`, `tupleBatchDeleteSchema` in `schemas/tuple.ts`
+- `tuple-service.ts`: `readTuples` (POST /read with filters + pagination + snake→camelCase), `writeTuple`, `deleteTuple`, `deleteTuplesBatch` (all via POST /write)
+- `routes/tuples.ts`: GET, POST, DELETE, DELETE /batch with Zod validation on all routes
+- Router registered in `app.ts` at `/api/stores/:storeId/tuples` before error handler
+- 18 new backend tests (10 service + 8 route); 61 total backend tests pass
+
 ### File List
+
+- `backend/src/types/openfga.ts` — MODIFIED: added TupleKey, Tuple, ReadTuplesResponse, OpenFgaReadResponse
+- `backend/src/schemas/tuple.ts` — NEW: Zod schemas for tuple endpoints
+- `backend/src/services/tuple-service.ts` — NEW: readTuples, writeTuple, deleteTuple, deleteTuplesBatch
+- `backend/src/services/tuple-service.test.ts` — NEW: 10 unit tests
+- `backend/src/routes/tuples.ts` — NEW: GET, POST, DELETE, DELETE /batch
+- `backend/src/routes/tuples.test.ts` — NEW: 8 integration tests
+- `backend/src/app.ts` — MODIFIED: registered tuple router
 
 ## Change Log
 
 - 2026-03-27: Story file created — status: ready-for-dev
+- 2026-03-27: Implementation complete — status: review

@@ -17,6 +17,7 @@ const props = withDefaults(defineProps<{
 
 const emit = defineEmits<{
   'update:modelValue': [value: string]
+  'blur': []
 }>()
 
 const inputId = computed(() => props.id ?? `input-${Math.random().toString(36).slice(2, 9)}`)
@@ -40,6 +41,7 @@ const errorId = computed(() => `${inputId.value}-error`)
         props.monospace ? 'font-mono' : '',
       ]"
       @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
+      @blur="emit('blur')"
     />
     <span
       v-if="props.error"

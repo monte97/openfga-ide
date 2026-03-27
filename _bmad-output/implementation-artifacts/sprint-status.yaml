@@ -61,9 +61,9 @@ development_status:
 
   # Epic 3: Manage Tuples
   epic-3: in-progress
-  3-1-backend-tuple-endpoints: ready-for-dev
-  3-2-tuple-table-with-filtering-and-pagination: ready-for-dev
-  3-3-add-and-delete-tuples: ready-for-dev
+  3-1-backend-tuple-endpoints: review
+  3-2-tuple-table-with-filtering-and-pagination: review
+  3-3-add-and-delete-tuples: review
   epic-3-retrospective: optional
 
   # Epic 4: Query Permissions
