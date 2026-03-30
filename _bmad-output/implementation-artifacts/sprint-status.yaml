@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-26
-last_updated: 2026-03-27T16:00:00Z
+last_updated: 2026-03-27T20:00:00Z
 project: openfga-viewer
 project_key: NOKEY
 tracking_system: file-system
@@ -67,20 +67,20 @@ development_status:
   epic-3-retrospective: optional
 
   # Epic 4: Query Permissions
-  epic-4: backlog
-  4-1-backend-query-endpoints: backlog
-  4-2-check-query-with-green-red-result-and-why-explanation: backlog
-  4-3-list-objects-list-users-and-expand-queries: backlog
+  epic-4: done
+  4-1-backend-query-endpoints: done
+  4-2-check-query-with-green-red-result-and-why-explanation: done
+  4-3-list-objects-list-users-and-expand-queries: done
   epic-4-retrospective: optional
 
   # Epic 5: Visualize Entity Relationships
-  epic-5: backlog
-  5-1-relationship-graph-canvas: backlog
-  5-2-graph-filtering-and-node-detail-inspector: backlog
-  epic-5-retrospective: optional
+  epic-5: done
+  5-1-relationship-graph-canvas: done
+  5-2-graph-filtering-and-node-detail-inspector: done
+  epic-5-retrospective: done
 
   # Epic 6: Import, Export & Backup
-  epic-6: backlog
-  6-1-export-and-backup-store-data: backlog
-  6-2-import-and-restore-store-data: backlog
-  epic-6-retrospective: optional
+  epic-6: done
+  6-1-export-and-backup-store-data: done
+  6-2-import-and-restore-store-data: done
+  epic-6-retrospective: done

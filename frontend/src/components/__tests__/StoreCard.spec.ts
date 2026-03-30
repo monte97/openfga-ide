@@ -51,12 +51,16 @@ describe('StoreCard', () => {
     expect(wrapper.emitted('select')).toBeFalsy()
   })
 
-  it('Backup button is disabled', () => {
+  it('Backup button emits backup event with store id (not disabled)', async () => {
     const wrapper = mount(StoreCard, { props: { store, isActive: false } })
     const buttons = wrapper.findAll('button')
     const backupBtn = buttons.find((b) => b.text().includes('Backup'))
     expect(backupBtn).toBeTruthy()
-    expect(backupBtn!.attributes('disabled')).toBeDefined()
+    expect(backupBtn!.attributes('disabled')).toBeUndefined()
+    await backupBtn!.trigger('click')
+    expect(wrapper.emitted('backup')).toBeTruthy()
+    expect(wrapper.emitted('backup')![0]).toEqual(['store-abc-123'])
+    expect(wrapper.emitted('select')).toBeFalsy()
   })
 
   it('truncates long store IDs', () => {

@@ -54,3 +54,85 @@ export interface OpenFgaReadResponse {
   tuples: Array<{ key: { user: string; relation: string; object: string }; timestamp: string }>
   continuation_token: string
 }
+
+export interface ImportPayload {
+  storeName?: string
+  model: AuthorizationModel | null
+  tuples: TupleKey[]
+}
+
+export interface ImportResult {
+  storeId: string
+  storeName: string
+  modelWritten: boolean
+  tuplesImported: number
+}
+
+export interface ExportPayload {
+  storeName: string
+  exportedAt: string
+  model: AuthorizationModel | null
+  tuples: TupleKey[]
+}
+
+// Query request types
+export interface CheckRequest {
+  user: string
+  relation: string
+  object: string
+  authorizationModelId?: string
+}
+
+export interface ListObjectsRequest {
+  user: string
+  relation: string
+  type: string
+  authorizationModelId?: string
+}
+
+export interface ListUsersRequest {
+  object: { type: string; id: string }
+  relation: string
+  userFilters?: Array<{ type: string }>
+  authorizationModelId?: string
+}
+
+export interface ExpandRequest {
+  relation: string
+  object: string
+  authorizationModelId?: string
+}
+
+// Query response types
+export interface CheckResponse {
+  allowed: boolean
+}
+
+export interface ListObjectsResponse {
+  objects: string[]
+}
+
+export interface ListUsersResponse {
+  users: string[]
+}
+
+export interface ExpandResponse {
+  tree: unknown
+}
+
+export interface OpenFgaCheckResponse {
+  allowed: boolean
+  resolution?: string
+}
+
+export interface OpenFgaListObjectsResponse {
+  objects: string[]
+}
+
+export interface OpenFgaListUsersResponse {
+  users: Array<{ object: { type: string; id: string } }>
+}
+
+export interface OpenFgaExpandResponse {
+  tree: { root: { name: string; [key: string]: unknown } }
+}

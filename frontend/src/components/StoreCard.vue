@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Trash2, Archive } from 'lucide-vue-next'
+import { Trash2, Archive, RotateCcw } from 'lucide-vue-next'
 import AppButton from '@/components/common/AppButton.vue'
 
 interface StoreInfo {
@@ -18,6 +18,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   select: []
   delete: []
+  backup: [storeId: string]
+  restore: [storeId: string]
 }>()
 
 const formattedDate = computed(() =>
@@ -64,13 +66,19 @@ function onDelete(e: Event) {
     <div class="flex items-center gap-2 flex-shrink-0">
       <AppButton
         variant="secondary"
-        disabled
-        title="Coming in Phase 2"
-        @click.stop
+        @click.stop="emit('backup', props.store.id)"
         @keydown.stop
       >
         <Archive class="size-4" />
         Backup
+      </AppButton>
+      <AppButton
+        variant="secondary"
+        @click.stop="emit('restore', props.store.id)"
+        @keydown.stop
+      >
+        <RotateCcw class="size-4" />
+        Restore
       </AppButton>
       <AppButton variant="danger" @click="onDelete" @keydown.stop>
         <Trash2 class="size-4" />
