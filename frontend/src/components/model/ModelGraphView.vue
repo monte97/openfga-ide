@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, markRaw } from 'vue'
-import { VueFlow, BackgroundVariant } from '@vue-flow/core'
-import { Background } from '@vue-flow/background'
+import { VueFlow } from '@vue-flow/core'
+import { Background, BackgroundVariant } from '@vue-flow/background'
 import { Controls } from '@vue-flow/controls'
 import { Share2 } from 'lucide-vue-next'
 import { useModelStore } from '@/stores/model'

@@ -6,6 +6,8 @@ import vueDevTools from 'vite-plugin-vue-devtools'
 import tailwindcss from '@tailwindcss/vite'
 
 // https://vite.dev/config/
+const apiTarget = process.env.VITE_API_TARGET ?? 'http://localhost:3000'
+
 export default defineConfig({
   plugins: [
     tailwindcss(),
@@ -20,7 +22,7 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3000',
+        target: apiTarget,
         changeOrigin: true,
       },
     },

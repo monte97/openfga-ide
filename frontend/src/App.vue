@@ -78,27 +78,29 @@ onUnmounted(() => {
     id="main-content"
     tabindex="-1"
     :class="[
-      'min-h-screen pt-14 transition-all duration-200',
+      'h-screen pt-14 transition-all duration-200',
       sidebarCollapsed ? 'pl-16' : 'pl-60',
     ]"
   >
-    <div
-      v-if="showViewportWarning"
-      class="flex items-center justify-between px-4 py-2 bg-warning/10 text-warning text-sm"
-      role="alert"
-    >
-      <span>OpenFGA Viewer is designed for desktop browsers (1280px+)</span>
-      <button
-        class="ml-4 text-warning hover:text-warning/80 focus:outline-none focus:ring-2 focus:ring-warning rounded"
-        aria-label="Dismiss viewport warning"
-        @click="dismissWarning"
+    <div class="flex flex-col h-full overflow-auto">
+      <div
+        v-if="showViewportWarning"
+        class="flex items-center justify-between px-4 py-2 bg-warning/10 text-warning text-sm shrink-0"
+        role="alert"
       >
-        ×
-      </button>
-    </div>
+        <span>OpenFGA Viewer is designed for desktop browsers (1280px+)</span>
+        <button
+          class="ml-4 text-warning hover:text-warning/80 focus:outline-none focus:ring-2 focus:ring-warning rounded"
+          aria-label="Dismiss viewport warning"
+          @click="dismissWarning"
+        >
+          ×
+        </button>
+      </div>
 
-    <div class="p-6">
-      <RouterView />
+      <div class="flex-1 min-h-0 p-6">
+        <RouterView />
+      </div>
     </div>
   </main>
 

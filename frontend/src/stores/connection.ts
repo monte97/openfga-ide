@@ -24,11 +24,13 @@ interface TestConnectionResponse {
   status: string
 }
 
+const STORE_ID_KEY = 'openfga-viewer:selectedStoreId'
+
 export const useConnectionStore = defineStore('connection', () => {
   const api = useApi()
 
   const url = ref<string>('')
-  const storeId = ref<string>('')
+  const storeId = ref<string>(localStorage.getItem(STORE_ID_KEY) ?? '')
   const status = ref<'connected' | 'error' | 'loading'>('loading')
   const stores = ref<StoreInfo[]>([])
   const loading = ref<boolean>(false)
@@ -46,7 +48,10 @@ export const useConnectionStore = defineStore('connection', () => {
     try {
       const data = await api.get<ConnectionStatus>('connection')
       url.value = data.url
-      storeId.value = data.storeId
+      // Prefer localStorage selection; fall back to backend-configured storeId
+      if (!storeId.value) {
+        storeId.value = data.storeId
+      }
       status.value = 'connected'
     } catch (err) {
       status.value = 'error'
@@ -93,6 +98,11 @@ export const useConnectionStore = defineStore('connection', () => {
 
   function selectStore(id: string) {
     storeId.value = id
+    if (id) {
+      localStorage.setItem(STORE_ID_KEY, id)
+    } else {
+      localStorage.removeItem(STORE_ID_KEY)
+    }
   }
 
   return {
