@@ -1,0 +1,202 @@
+{
+  "storeName": "Demo — Document Sharing",
+  "exportedAt": "2026-03-30T09:00:00.000Z",
+  "model": {
+    "schema_version": "1.1",
+    "type_definitions": [
+      {
+        "type": "user"
+      },
+      {
+        "type": "group",
+        "relations": {
+          "member": {
+            "this": {}
+          }
+        },
+        "metadata": {
+          "relations": {
+            "member": {
+              "directly_related_user_types": [
+                { "type": "user" }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "type": "folder",
+        "relations": {
+          "owner": {
+            "this": {}
+          },
+          "editor": {
+            "union": {
+              "child": [
+                { "this": {} },
+                {
+                  "computedUserset": {
+                    "object": "",
+                    "relation": "owner"
+                  }
+                }
+              ]
+            }
+          },
+          "viewer": {
+            "union": {
+              "child": [
+                { "this": {} },
+                {
+                  "computedUserset": {
+                    "object": "",
+                    "relation": "editor"
+                  }
+                }
+              ]
+            }
+          }
+        },
+        "metadata": {
+          "relations": {
+            "owner": {
+              "directly_related_user_types": [
+                { "type": "user" }
+              ]
+            },
+            "editor": {
+              "directly_related_user_types": [
+                { "type": "user" },
+                { "type": "group", "relation": "member" }
+              ]
+            },
+            "viewer": {
+              "directly_related_user_types": [
+                { "type": "user" },
+                { "type": "group", "relation": "member" }
+              ]
+            }
+          }
+        }
+      },
+      {
+        "type": "document",
+        "relations": {
+          "owner": {
+            "this": {}
+          },
+          "editor": {
+            "union": {
+              "child": [
+                { "this": {} },
+                {
+                  "computedUserset": {
+                    "object": "",
+                    "relation": "owner"
+                  }
+                },
+                {
+                  "tupleToUserset": {
+                    "tupleset": {
+                      "object": "",
+                      "relation": "parent"
+                    },
+                    "computedUserset": {
+                      "object": "",
+                      "relation": "editor"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "viewer": {
+            "union": {
+              "child": [
+                { "this": {} },
+                {
+                  "computedUserset": {
+                    "object": "",
+                    "relation": "editor"
+                  }
+                },
+                {
+                  "tupleToUserset": {
+                    "tupleset": {
+                      "object": "",
+                      "relation": "parent"
+                    },
+                    "computedUserset": {
+                      "object": "",
+                      "relation": "viewer"
+                    }
+                  }
+                }
+              ]
+            }
+          },
+          "parent": {
+            "this": {}
+          }
+        },
+        "metadata": {
+          "relations": {
+            "owner": {
+              "directly_related_user_types": [
+                { "type": "user" }
+              ]
+            },
+            "editor": {
+              "directly_related_user_types": [
+                { "type": "user" },
+                { "type": "group", "relation": "member" }
+              ]
+            },
+            "viewer": {
+              "directly_related_user_types": [
+                { "type": "user" },
+                { "type": "group", "relation": "member" }
+              ]
+            },
+            "parent": {
+              "directly_related_user_types": [
+                { "type": "folder" }
+              ]
+            }
+          }
+        }
+      }
+    ]
+  },
+  "tuples": [
+    { "user": "user:alice", "relation": "owner", "object": "folder:engineering" },
+    { "user": "user:alice", "relation": "owner", "object": "document:roadmap" },
+    { "user": "user:alice", "relation": "owner", "object": "document:architecture" },
+
+    { "user": "user:bob", "relation": "member", "object": "group:backend-team" },
+    { "user": "user:carol", "relation": "member", "object": "group:backend-team" },
+    { "user": "user:dave", "relation": "member", "object": "group:frontend-team" },
+    { "user": "user:eve", "relation": "member", "object": "group:frontend-team" },
+    { "user": "user:frank", "relation": "member", "object": "group:design-team" },
+
+    { "user": "group:backend-team#member", "relation": "editor", "object": "folder:engineering" },
+    { "user": "group:frontend-team#member", "relation": "viewer", "object": "folder:engineering" },
+
+    { "user": "user:bob", "relation": "editor", "object": "document:roadmap" },
+    { "user": "user:carol", "relation": "editor", "object": "document:architecture" },
+    { "user": "user:dave", "relation": "viewer", "object": "document:roadmap" },
+    { "user": "user:frank", "relation": "viewer", "object": "document:roadmap" },
+
+    { "user": "folder:engineering", "relation": "parent", "object": "document:roadmap" },
+    { "user": "folder:engineering", "relation": "parent", "object": "document:architecture" },
+
+    { "user": "user:alice", "relation": "owner", "object": "folder:public" },
+    { "user": "user:alice", "relation": "owner", "object": "document:onboarding" },
+    { "user": "folder:public", "relation": "parent", "object": "document:onboarding" },
+    { "user": "group:backend-team#member", "relation": "viewer", "object": "folder:public" },
+    { "user": "group:frontend-team#member", "relation": "viewer", "object": "folder:public" },
+    { "user": "group:design-team#member", "relation": "viewer", "object": "folder:public" },
+
+    { "user": "user:grace", "relation": "viewer", "object": "document:onboarding" }
+  ]
+}
