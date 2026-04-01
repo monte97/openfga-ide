@@ -1,11 +1,11 @@
 ---
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 lastStep: 14
-status: 'complete'
-completedAt: '2026-03-26'
 inputDocuments:
   - '_bmad-output/planning-artifacts/prd.md'
   - '_bmad-output/planning-artifacts/architecture.md'
+  - '_bmad-output/brainstorming/authorization-test-suite-management.md'
+  - '_bmad-output/planning-artifacts/ux-design-specification-viewer.md (reference)'
 documentCounts:
   briefs: 0
   prd: 1
@@ -13,1131 +13,977 @@ documentCounts:
   projectContext: 0
 project_name: 'openfga-viewer'
 user_name: 'monte'
-date: '2026-03-26'
+date: '2026-03-31'
 ---
 
 # UX Design Specification openfga-viewer
 
 **Author:** monte
-**Date:** 2026-03-26
+**Date:** 2026-03-31
+
+**Scope:** Authorization Test Suite Management feature (FR1-FR45)
 
 ---
-
-<!-- UX design content will be appended sequentially through collaborative workflow steps -->
 
 ## Executive Summary
 
 ### Project Vision
 
-OpenFGA Viewer is a standalone web application that fills a critical gap in the OpenFGA ecosystem: a professional-grade tool for managing, visualizing, and querying authorization models on real deployed instances. By routing all communication through a backend proxy, it eliminates the CORS limitations of the official Playground and provides a secure, controllable layer for teams working with OpenFGA in production environments. The tool is designed to be immediately useful — connect, see your model, query permissions — with zero learning curve for core tasks.
+The Authorization Test Suite Management module extends openfga-viewer from a passive inspection tool into an active verification platform. Users define test suites — collections of authorization assertions grouped thematically — execute them against ephemeral OpenFGA stores, and review results. The module serves both as a regression testing tool for CI/CD pipelines and as living documentation of authorization policies.
+
+The core UX promise: **make authorization policy verification as intuitive as reading a sentence** — "Can user:alice view document:budget?" — while providing the power and precision that developers and DevOps engineers demand.
 
 ### Target Users
 
-| User | Role | Technical Level | Primary Goal | Key Need |
-|---|---|---|---|---|
-| Backend Developer | Day-to-day authorization work | High | Understand and debug permissions | Visual clarity, fast queries, no CLI friction |
-| Platform Engineer | Multi-instance management | High | Administer stores across environments | Backup/restore, store CRUD, instance switching |
-| Trainer | Live demos and workshops | High | Teach authorization concepts interactively | Import/export scenarios, visual model exploration |
-| Project Manager | Policy verification | Low | Prove the model matches business rules | Readable graphs, green/red feedback, screenshot-friendly |
+- **Marco (Developer)** — Writes and maintains authorization models. Needs to define precise test cases (`user`, `relation`, `object`, `expected`), iterate rapidly in the editor, and integrate suites into CI/CD. Thinks in OpenFGA primitives. Values speed, keyboard shortcuts, and JSON editing.
 
-All users share a desktop environment (1280px+) and work in focused sessions — this is a task tool, not an ambient dashboard.
+- **Alessia (Product Manager)** — Reviews authorization policies for correctness against business rules. Needs to read test suites as human-understandable statements, glance at run results dashboards, and confirm policy health. Does not write JSON directly.
+
+- **Monte (Trainer/Consultant)** — Uses test suites as teaching material and live demos. Needs polished run experiences that feel like presentations, import/export for sharing across environments, and clear visual feedback during execution.
+
+- **Dario (DevOps Engineer)** — Integrates test suites into automated pipelines. Consumes the REST API directly (`POST /suites/:id/run` → poll → exit code). Needs reliable async execution, clear status reporting, and machine-readable results (JSON).
 
 ### Key Design Challenges
 
-1. **Two-graph mental model** — The model graph (abstract: types and relations) and the relationship graph (concrete: entities and tuples) serve different purposes but use the same rendering technology (Vue Flow). The UX must make the distinction immediate and unambiguous through naming, visual treatment, and navigation placement.
+1. **Dual-Audience Readability** — The same test case must be editable as raw JSON for Marco and readable as a sentence for Alessia. The dual-mode editor (form ↔ JSON) must round-trip losslessly with JSON as the source of truth, and both views must feel like first-class citizens.
 
-2. **Multi-input query console** — Four query types (Check, List Objects, List Users, Expand) have different input schemas and radically different output formats (boolean, object list, user list, tree). The interface must guide users to the right query without overwhelming them.
+2. **Hierarchical Editor Complexity** — Suites contain groups, groups contain test cases, each with metadata (name, description, tags, severity). The editor must make this hierarchy navigable without overwhelming the user — progressive disclosure is the organizing principle, not just a technique.
 
-3. **Pervasive store context dependency** — Nearly every view requires a connected instance and selected store. The UX must handle missing context gracefully, prevent dead-end states, and make store switching low-friction.
+3. **Async Execution Feedback** — Runs go through multiple phases (provisioning → loading fixtures → running checks → cleanup), each with latency. A single progress bar will feel broken. The UX must present execution as a **phase timeline** where each step is visible progress, turning async latency into narrative momentum.
 
-4. **Mixed technical literacy** — The same views must serve developers who think in `user:alice` / `relation:viewer` and non-technical stakeholders who think in business rules. Visual feedback (green/red, graph layout) must communicate without requiring domain syntax knowledge.
+4. **Consistency with Existing Viewer** — The test suite module lives within the existing openfga-viewer shell (sidebar navigation, connection/store context). It must feel native, reusing existing design patterns (Tailwind v4.2, Headless UI) while introducing new interaction paradigms (dual-mode editor, run timeline).
 
 ### Design Opportunities
 
-1. **Visual debugging as core differentiator** — The combination of relationship graph navigation + green/red permission feedback can make OpenFGA Viewer the fastest way to debug authorization, turning a 20-minute CLI investigation into a 3-minute visual workflow.
+1. **Test Cases as Sentences** — Transform `{ user: "user:alice", relation: "viewer", object: "document:budget", expected: true }` into "Can user:alice view document:budget? → Yes". This makes test suites readable as policy documentation for non-technical stakeholders.
 
-2. **Guided first-run experience** — The "no store selected" state is an opportunity to onboard users in 3 steps (connect → select store → see your model), turning a potential dead-end into a welcoming entry point.
+2. **Run as Narrative** — The ephemeral store lifecycle (create → load → execute → cleanup) maps naturally to a visual timeline. Each phase becomes a "chapter" with cascading green checkmarks, making execution feel purposeful rather than opaque.
 
-3. **Graph-to-query contextual linking** — Clicking entities or relations in graphs can pre-fill the query console, creating a seamless inspect-then-verify flow that no CLI can match.
+3. **Progressive Disclosure as Scope Management** — Day-one surface: suite list with last-run badges. Power-user unlock: JSON dual-mode editor, run history, import/export. This naturally solves the dual-audience problem and keeps the initial experience approachable.
+
+4. **Form ↔ JSON Trust Indicator** — A subtle "JSON synced ✓" indicator in form mode builds user confidence that switching views preserves data integrity.
 
 ## Core User Experience
 
 ### Defining Experience
 
-The core interaction loop of OpenFGA Viewer is **query → visualize → understand**. Users connect to an OpenFGA instance and immediately begin verifying permissions, exploring models, and debugging access issues. The most frequent action is running permission queries (Check, List Objects, List Users, Expand), but the defining experience is the moment a complex authorization model becomes visually clear — through graphs, color-coded results, and contextual navigation.
-
-The critical action to get right is the **first connection and store selection**: if users aren't oriented and productive within 30 seconds of opening the tool, the experience fails before any feature can prove its value.
+The defining experience is the **edit → run → review loop**. During active development, users iterate rapidly: adjust a test case, run the suite, inspect results, repeat. Once suites stabilize, execution becomes a simpler one-click confirmation ("are my policies still correct?"). The edit phase dominates interaction count; the run phase dominates emotional weight.
 
 ### Platform Strategy
 
-- **Desktop web application** (1280px+), mouse and keyboard primary input
-- **Co-exists with developer workflows** — the tool sits alongside terminals, IDEs, and documentation. It must not demand full-screen attention.
-- **Copy/paste as a first-class interaction** — users paste user IDs from logs, object IDs from code, and relation names from documentation directly into query fields
-- **No offline support required** — the tool is meaningless without a live OpenFGA connection
-- **Keyboard acceleration for power users** — repeated query workflows (change one field, re-run) should be fast without reaching for the mouse
+- **Web SPA** embedded in the existing openfga-viewer shell (sidebar navigation, connection/store context)
+- **Desktop browser only**, mouse + keyboard as primary input
+- No mobile, no offline, no touch optimization
+- Keyboard shortcuts are critical for the developer persona (Marco) — suite editor must be fully keyboard-navigable
+- Click-through paths must be clear for the PM persona (Alessia) — no hidden actions behind keyboard-only shortcuts
 
 ### Effortless Interactions
 
-These interactions must feel zero-friction:
-
-| Interaction | Why It Must Be Effortless |
-|---|---|
-| Connecting to an instance | Pre-configured via env vars; on launch, users see their stores immediately — no setup wizard |
-| Switching views | Store context, last query, and navigation state persist across view changes — no re-entering data |
-| Reading a permission result | Green = allowed, red = denied. Instant, unambiguous, no JSON parsing required |
-| Understanding a permission result | Check shows green/red, then "Why?" expands the resolution path inline — no separate query, no view switch |
-| Graph → Query flow | Clicking an entity in a graph pre-fills the query console — inspect then verify in one motion |
-| Adding/deleting tuples | Inline forms with smart defaults (pre-fill type from current view context), no modal dialogs for single operations |
+1. **Creating a test case** — 4 fields (user, relation, object, expected) with autocomplete sourced from the connected store's model. Zero mental overhead from "I want to test this" to "the assertion exists."
+2. **Running a suite** — Single action (button or shortcut), immediate visual feedback via the phase timeline. No configuration dialogs, no confirmation modals.
+3. **Reading results** — Pass/fail is visible at a glance (color + icon). Failed tests surface first. Drill-down to details is one click.
+4. **Switching form ↔ JSON** — Instant, lossless, no "save before switching" friction. The "JSON synced ✓" indicator removes doubt.
 
 ### Critical Success Moments
 
-1. **First green/red check result** — The "aha" moment. A developer runs their first Check query and sees a clear green checkmark or red X within 1 second. This is when the tool proves its value over curl + JSON.
-
-2. **Model graph reveals structure** — A wall of JSON authorization model becomes an interactive visual graph. Types as nodes, relations as edges. Users finally *see* their authorization architecture.
-
-3. **Finding the missing link** — While debugging a permission issue, the relationship graph reveals a missing tuple that raw data couldn't surface. The visual representation makes the gap obvious.
-
-4. **Non-technical stakeholder reads the graph** — A project manager looks at the model graph and says "yes, that matches our access policy" without needing a developer to translate. The tool speaks both technical and business language through its visual design.
-
-5. **"Why?" reveals the permission chain** — After seeing green or red, the user clicks "Why?" and instantly sees the resolution path: `user:marco → member of team:backend → viewer on document:specs`. For denied results, the chain shows where it breaks. No more guessing — the tool explains its answers.
+1. **First run completes** — The user sees the phase timeline cascade through provisioning → fixtures → checks → cleanup, ending with a green summary. This is the "it works!" moment that builds trust in the entire system.
+2. **First failure caught** — A test returns `actual: false` when `expected: true`. The user sees exactly which assertion failed and why. This is the "this is useful" moment.
+3. **Suite imported and runs on first try** — A colleague's exported suite loads, executes, and produces results without manual edits. This is the "this is shareable" moment.
+4. **CI pipeline exits non-zero** — Dario's `POST /suites/:id/run` → poll → exit code 1 catches a regression before merge. This is the "this is essential" moment.
 
 ### Experience Principles
 
-1. **Show, don't tell** — Every piece of authorization data has a visual representation. If users need to read raw JSON to understand something, the UX has failed. Graphs, color coding, and structured layouts replace data dumps.
-
-2. **Connect and go** — Zero setup friction. Pre-configured connection works on launch; first meaningful interaction within 30 seconds. The tool assumes you know what you're here to do and gets out of the way.
-
-3. **Context flows, never resets** — Store selection, query inputs, and navigation state persist across view switches. The tool remembers what you were doing. Switching from Tuple Manager to Query Console doesn't lose your filters or selections.
-
-4. **Answers, not data — and explain why** — Green/red, not `{"allowed": true}`. But also: *why* green, *why* red. Every Check result offers an inline "Why?" expansion showing the resolution path — which tuples and relations led to the decision. For denials, show where the chain breaks. Phase 2 can elevate this to graph-highlighted paths, but MVP delivers the textual explanation inline.
+1. **Sentence-first** — Every test case is readable as a natural language question ("Can user:alice view document:budget?"). Technical notation is available but secondary.
+2. **Progressive disclosure** — The suite list is day-one simple. The JSON editor, run history, import/export, and advanced metadata unlock as the user needs them.
+3. **Async as narrative** — Execution latency is reframed as a visible phase timeline. Every second of waiting shows progress, not stalling.
+4. **Trust through transparency** — Form ↔ JSON sync is visible. Run phases are visible. Ephemeral store lifecycle is visible. Nothing happens behind an opaque curtain.
 
 ## Desired Emotional Response
 
 ### Primary Emotional Goals
 
-**Confident control** — Users should feel like they understand their authorization system and can act on it safely. OpenFGA Viewer turns opaque infrastructure into something visible, verifiable, and manageable. The tool earns trust by being transparent (live queries, no caching, clear feedback) and builds confidence through visual clarity.
+- **Confidence** — "I trust that these tests accurately reflect my authorization policies." The tool never leaves the user guessing about state, sync status, or correctness.
+- **Efficiency** — "I defined 20 test cases in 5 minutes." The edit loop feels fast and fluid, not bureaucratic or ceremony-heavy.
+- **Relief** — "All green. My policies are correct." Run completion is a moment of tension release — the payoff for the work invested in defining assertions.
 
 ### Emotional Journey Mapping
 
-| Stage | Desired Feeling | What Triggers It |
-|---|---|---|
-| First open | Oriented, not overwhelmed | Clean layout, connection status visible, clear starting point |
-| First connection | Relief + trust | "Test Connection" → green badge. It works. No CORS errors. |
-| Exploring model | Clarity, "now I get it" | JSON → visual graph. The model makes sense for the first time |
-| Running a query | Confidence | Green/red is instant and unambiguous. "Why?" explains the logic |
-| Debugging a permission | Detective satisfaction | The graph reveals the missing link. Problem solved in minutes, not hours |
-| Managing stores | Safety, control | "I have a backup. I can recover. I'm not operating blind." |
-| Something goes wrong | Informed, not panicked | Clear error messages with context — what failed and why, not cryptic 500s |
-| Returning to the tool | Familiarity, no re-learning | Same layout, state preserved, muscle memory works |
-
-**Future vision:** Test management integration — define expected permission results as test suites, run them against live instances, detect regressions. The emotional goal: **certainty** ("my authorization model is correct and I can prove it continuously, not just ad-hoc").
+| Stage | Emotion | Trigger |
+|-------|---------|---------|
+| First discovery | Curiosity | "I can test my policies here?" — the module appears in the sidebar alongside familiar viewer tools |
+| First test case created | Empowerment | 4-field form with autocomplete makes the first assertion trivial |
+| First run launched | Anticipation | Phase timeline starts cascading — something is happening |
+| Run completes (pass) | Relief + Satisfaction | Green summary, all assertions confirmed |
+| Run completes (fail) | Alertness + Gratitude | Red highlight on failed test — "glad I caught this before production" |
+| Suite shared/imported | Connection | A colleague's suite loads and runs without edits — shared understanding |
+| Returning user | Calm confidence | Suite list with last-run badges gives instant health overview |
 
 ### Micro-Emotions
 
-| Desired State | Over | Why It Matters |
-|---|---|---|
-| Confidence | Confusion | Every interaction reinforces "I know what's happening." Ambiguous states are the enemy |
-| Trust | Skepticism | When the tool says "allowed" or "denied," it reflects real OpenFGA state. No caching, no stale data |
-| Accomplishment | Frustration | Tasks complete cleanly with visible confirmation. No silent successes |
-
-**Emotions to actively prevent:**
-- **Anxiety** ("did I just break production?") → confirmation dialogs on all destructive actions (delete store, batch delete tuples)
-- **Disorientation** ("where am I? which store?") → persistent header with connection status + active store name on every view
-- **Doubt** ("is this result current?") → always query live, never cache permission results, show response timestamps
+- **Confidence vs. Confusion** — Critical. Every interaction must reinforce "I know what's happening." The phase timeline, sync indicator, and clear pass/fail signals all serve this.
+- **Trust vs. Skepticism** — The dual-mode editor is the battleground. The "JSON synced ✓" indicator and lossless round-trip are the weapons.
+- **Accomplishment vs. Frustration** — Test case creation must feel like progress, not data entry. Autocomplete and sensible defaults turn form-filling into assertion-building.
 
 ### Design Implications
 
-| Emotional Goal | UX Design Approach |
-|---|---|
-| Confident control | Persistent context (header badge, store name), explicit confirmation on destructive actions, clear state indicators |
-| Clarity / "now I get it" | Visual graphs with meaningful layout, color-coded types, labeled edges — no raw JSON as primary display |
-| Trust | Live queries only (no caching), error messages with full context, "Why?" expansion on Check results |
-| Detective satisfaction | Relationship graph that makes missing links visible, graph-to-query flow for fast verification |
-| Safety | Backup before changes, export/import workflows, undo-friendly patterns (confirm before delete) |
-| Familiarity on return | Consistent layout across all views, persistent navigation state, no UI surprises between sessions |
-
-> **Future-proofing note:** MVP query console inputs should be designed with reusability in mind — the same Check/ListObjects input format will eventually serve as test case definitions in the test management feature.
+- **Confidence** → Visible state everywhere: run phase, editor sync status, save confirmation, last-run badge on suite cards
+- **Efficiency** → Keyboard shortcuts, inline editing, autocomplete, single-action run, no confirmation modals for non-destructive actions
+- **Relief** → Run completion animation (subtle, not flashy), green cascade, clear summary with counts
+- **Alertness on failure** → Failed tests surface first, red accent without alarm-style anxiety, clear "expected vs. actual" display
+- **Trust** → Form ↔ JSON sync indicator, no hidden state, ephemeral store lifecycle visible in timeline
 
 ### Emotional Design Principles
 
-1. **Transparency builds trust** — Show what's happening. Live queries, visible connection state, response context. Never hide the system state from the user.
-
-2. **Confirmation prevents anxiety** — Destructive actions always require explicit confirmation. Non-destructive actions give visible feedback (toast, badge update, inline success). No action should leave the user wondering "did that work?"
-
-3. **Clarity over cleverness** — Choose the most readable representation, not the most compact. A visual graph with labeled edges beats a tree of IDs. Green/red with "Why?" beats a JSON response body. The tool's job is to make authorization understandable.
-
-4. **Progressive disclosure of complexity** — Start with the answer (green/red), offer the explanation ("Why?"), enable deep investigation (relationship graph). Each layer is opt-in, never forced.
+1. **State is always visible** — The user never wonders "what's happening?" or "did that save?" Every async operation, sync event, and status change is communicated visually.
+2. **Errors inform, not alarm** — Failures are expected outcomes in a testing tool. Red means "attention needed," not "something broke." The tone is diagnostic, not catastrophic.
+3. **Speed builds trust** — Fast transitions, instant editor switching, responsive autocomplete. Perceived performance reinforces the feeling that the tool is reliable.
+4. **Completion is celebrated subtly** — A green cascade, a summary count, a badge update. Not confetti — just quiet confirmation that the work paid off.
 
 ## UX Pattern Analysis & Inspiration
 
 ### Inspiring Products Analysis
 
-**1. Postman** — The gold standard for API developer tools
-- **What it does well:** Tabbed request interface with clear input → output flow. You fill fields, hit Send, see the result immediately. History persists. Collections organize work.
-- **Relevant to us:** Our Query Console follows the same pattern — fill user/relation/object, hit Check, see green/red. Postman's input → result → history flow is directly transferable.
-- **Key UX lesson:** The response area is always visible below the input. No page navigation to see results. Input and output live together.
+**Postman — Collection Runner**
+- Solves the "define and execute API assertions" problem with a hierarchical organizer (collections → folders → requests) that maps directly to our suite → group → test case model
+- Dual-mode editing: form-based request builder alongside raw body editor. Users pick their comfort level without losing capability
+- Run results appear inline next to each request — no context switch between "what I defined" and "what happened"
+- Tags and search for organizing large collections; badge indicators for last-run status
 
-**2. Grafana** — Complex data made visual and explorable
-- **What it does well:** Dense information presented through progressive disclosure — dashboard overview → click panel → drill into detail. Sidebar navigation with persistent context (time range, data source). Dark theme that makes colored data pop.
-- **Relevant to us:** Our header context (connection + store) mirrors Grafana's data source selector. The graph views need the same "overview → click → detail" pattern.
-- **Key UX lesson:** Context selectors (data source / time range) are always visible in the header, never buried in settings. Every view respects the current context.
+**Playwright UI Mode — Test Runner**
+- Tree view on the left with test files and describe blocks; execution status updates live per node
+- Each test gets a clear pass/fail icon that updates in real-time during execution — the cascading green checkmarks pattern
+- Failed tests auto-expand to show error details; passing tests stay collapsed — progressive disclosure driven by outcome
+- Retry and run-single-test are one-click actions from the tree
 
-**3. Neo4j Browser** — Graph data exploration done right
-- **What it does well:** Type a query, see a graph. Nodes are colored by label, draggable, clickable for detail. The graph is the primary interface, not a secondary visualization.
-- **Relevant to us:** Our Relationship Graph view is essentially this — entities as nodes, relations as edges, colored by type. Neo4j's "click node → see properties" maps directly to our GraphNodeDetail panel.
-- **Key UX lesson:** The graph canvas takes maximum screen space. Controls are minimal overlays, not sidebars. Let the visualization breathe.
+**GitHub Actions — Job Timeline**
+- Multi-phase job execution displayed as a vertical timeline with status icons per step
+- Each phase is expandable for detail, collapsed by default — exactly the pattern for our provisioning → fixtures → checks → cleanup timeline
+- Clear visual distinction between running (spinner), passed (green check), failed (red X), and skipped (gray dash)
+- Duration shown per step with **live elapsed timer** on the active step — counting `provisioning... 2s` is better than a static spinner and directly serves the "async as narrative" principle
 
-**4. pgAdmin / DBeaver** — Data table management for technical users
-- **What it does well:** Filterable data tables with inline editing, pagination for large datasets, tree-based navigation (server → database → schema → table).
-- **Relevant to us:** Our Tuple Manager is a data table with filters, add/delete, pagination — same pattern. The store → model hierarchy mirrors the database tree navigation.
-- **Key UX lesson:** Batch operations (select rows → delete) with clear selection indicators. Filters that are visible and active, not hidden behind a button.
-
-**5. Figma** — Inspector panel pattern for contextual detail
-- **What it does well:** Click an element on the canvas, a side panel slides in showing properties and actions — canvas stays visible, no modal interruption, no page navigation. Detail and context coexist.
-- **Relevant to us:** Both graph views (Model Graph and Relationship Graph) need this pattern. Click a type node → side panel shows relations, metadata, connected types. Click an entity → side panel shows relationships and quick actions ("Query this entity").
-- **Key UX lesson:** Detail panels are companions to the canvas, not replacements. The user never loses spatial context while inspecting a node.
-
-**6. VS Code / Monaco Editor** — Code viewing as user expectation
-- **What it does well:** Syntax highlighting, line numbers, monospace layout, inline diagnostics, hover tooltips. Sets the bar for how developers expect code-like content to look and feel.
-- **Relevant to us:** The DSL view in Model Viewer should feel like a code viewer, not a `<pre>` block. Shiki for syntax highlighting + line numbers + monospace layout gets 80% of the Monaco feel at 1% of the bundle cost.
-- **Key UX lesson:** Developers have ingrained expectations for code display. Meeting those expectations (even read-only) builds immediate trust and familiarity.
+**VS Code Settings UI — Dual-Mode Editor**
+- Form view over a JSON file with a toggle to switch between visual editor and raw JSON — the closest analogue to our CodeMirror ↔ form architecture
+- Lossless round-trip: edits in form update JSON live, and vice versa
+- Search works across both views — typing a keyword highlights matches whether in form mode or JSON mode
+- Remembers the user's last view preference across sessions
 
 ### Transferable UX Patterns
 
-| Pattern | Source | Application in OpenFGA Viewer |
-|---|---|---|
-| Input → Result on same page | Postman | Query Console: input fields above, result below, no navigation |
-| Header context bar | Grafana | Persistent header: connection status + active store name on every view |
-| Full-canvas graph + click-for-detail | Neo4j Browser | Both graph views: maximize canvas, minimal overlay controls |
-| Filterable data table + batch ops | pgAdmin/DBeaver | Tuple Manager: TanStack Table with visible filters, batch select+delete |
-| Side inspector panel | Figma | Graph views: click node → side panel with detail + quick actions, canvas stays visible |
-| Code viewer aesthetics | VS Code/Monaco | DSL view: Shiki highlighting + line numbers + monospace. Looks like code, not text |
-| Universal "Why?" affordance | Original (team insight) | Reusable "Why?" button component. MVP: active on Check results. Future: all query types and graph edges |
+**Navigation Patterns:**
+- **Tree sidebar for hierarchy** (Playwright) — suite list → group → test cases navigable as a collapsible tree. Familiar to developers, scannable for PMs.
+- **Inline results next to definitions** (Postman) — test case definition and its last result share the same row. No navigation to a separate "results" page.
+
+**Interaction Patterns:**
+- **Cascading status updates** (Playwright) — during execution, each test case node updates from pending → running → pass/fail in sequence. Turns async polling into visible narrative.
+- **Run from any level** (Postman) — run the whole suite, a single group, or a single test case. Same action, different scope.
+- **Fail-first sorting** (Playwright) — failed tests float to the top of results. The most important information is always visible first.
+- **Cross-view search** (VS Code) — search input filters/highlights matching test cases in both form mode and JSON mode. One search box, both views.
+- **Live elapsed timer** (GitHub Actions) — active run phase shows a ticking elapsed counter, turning wait time into visible progress.
+
+**Visual Patterns:**
+- **Phase timeline with expandable steps** (GitHub Actions) — vertical step list with status icon, label, and duration. Collapsed by default, expandable for detail.
+- **Minimal color palette for status** (all four) — green/red/gray/amber. No gradients, no complex iconography. Status is communicated through color + simple icon.
 
 ### Anti-Patterns to Avoid
 
-| Anti-Pattern | Source | Why It Hurts | Our Counter |
-|---|---|---|---|
-| Modal-heavy interactions | OpenFGA Playground | Modals break flow for simple actions | Inline forms, expandable panels, side inspector |
-| Information overload | Kubernetes Dashboard | Showing every field on every resource overwhelms | Progressive disclosure: answer first, detail on demand |
-| State reset on navigation | Many developer tools | Switching tabs loses query inputs, filters, selections | "Context flows, never resets" principle |
-| Graph without text fallback | Some graph-only tools | Unusable without mouse, inaccessible | Keyboard navigation + text alternatives alongside graphs |
-| Data without context | Raw API tools | Results without explanation require expertise to interpret | "Why?" pattern: every result can be explained |
-| Plain text code display | Legacy tools | `<pre>` blocks feel unprofessional, erode trust | Shiki + line numbers + monospace = code viewer feel |
+- **Separate results page** — Forcing navigation away from the test definition to see results breaks the edit → run → review loop. Results must be visible in context.
+- **Modal-heavy configuration** — Pre-run configuration dialogs add friction. Our run action must be zero-config (single click/shortcut).
+- **Opaque progress** — A single spinner with "Running..." gives no sense of progress or phase. Always show which phase is active and how many tests have completed.
+- **Overcrowded toolbars** — Dense filter bars and option rows on first view. Our suite editor should surface only the current action's controls; everything else lives behind progressive disclosure.
+- **Mode amnesia** — Resetting the editor to the default view (form) every time the user navigates away and returns. If Marco switches to JSON mode, it must persist across navigation. Respect the user's last choice — this directly supports the trust emotion.
 
 ### Design Inspiration Strategy
 
 **Adopt directly:**
-- Postman's input → result layout for Query Console
-- Grafana's persistent header context pattern
-- Neo4j's full-canvas graph with click-for-detail
-- pgAdmin's filterable table with batch operations
-- Figma's side inspector panel for graph node detail
+- Phase timeline with per-step status icons and live elapsed timer (GitHub Actions) → our run execution view
+- Cascading pass/fail updates in tree view (Playwright) → our test result rendering
+- Fail-first result sorting (Playwright) → our results display order
+- Form ↔ JSON toggle with lossless round-trip (VS Code Settings) → our dual-mode editor
 
-**Adapt to our context:**
-- VS Code's code viewer aesthetics → lightweight Shiki implementation (read-only, no editing in MVP)
-- Neo4j's single graph → two distinct graph contexts (model vs. relationships) with different visual treatments
-- Postman's collections/history → future phase, not MVP
-
-**Innovate (our differentiator):**
-- Universal "Why?" pattern — a reusable component that explains any result. MVP: Check query resolution path. Future: extend to List Objects, List Users, and graph edges. No inspiration source does this consistently; it becomes our design language.
+**Adapt for our context:**
+- Collection runner inline results (Postman) → simplified to show last-run pass/fail badge on each test case row
+- Tree sidebar navigation (Playwright) → adapted for suite → group → test case hierarchy with sentence-mode rendering for non-technical users
+- Cross-view search (VS Code) → scoped to suite editor context, filtering test cases by user/relation/object/description
 
 **Avoid:**
-- Modal dialogs for single-item operations
-- Hiding filters behind buttons or menus
-- Resetting view state on navigation
-- Showing raw JSON as primary data representation
+- Separate results pages — conflicts with edit → run → review loop principle
+- Configuration modals before run — conflicts with "single action, no dialogs" effortless interaction goal
+- Complex filtering UI on first view — conflicts with progressive disclosure principle
+- Mode amnesia — conflicts with trust through transparency principle
 
 ## Design System Foundation
 
 ### Design System Choice
 
-**Tailwind CSS v4.2 as design foundation** with custom components and headless libraries for complex interactions. No pre-built component library (no Vuetify, PrimeVue, Ant Design Vue).
+**Tailwind CSS v4.2 + Headless UI** — continuing the existing openfga-viewer design system. No new UI framework introduced.
 
-| Layer | Technology | Role |
-|---|---|---|
-| Styling foundation | Tailwind CSS v4.2 | Utility-first CSS, `@theme` design tokens, responsive utilities |
-| Icons | Lucide (`lucide-vue-next`) | Tree-shakeable, Vue-native icon library |
-| Data tables | TanStack Table v8 (headless) | Pagination, filtering, selection, sorting — styled with Tailwind |
-| Graph rendering | Vue Flow + dagre | Both model and relationship graphs — styled with Tailwind |
-| Code display | Shiki | DSL syntax highlighting — line numbers + monospace layout |
-| Notifications | Custom toast composable | Lightweight, no external library |
-| All other components | Custom + Tailwind | Buttons, inputs, badges, tabs, cards, dialogs — ~11 base components |
+The only new UI dependency is **CodeMirror 6** for the JSON dual-mode editor, already decided at the architecture level.
 
 ### Rationale for Selection
 
-1. **Solo developer velocity** — Tailwind utilities enable fast UI iteration without writing CSS files or fighting component library opinions
-2. **Developer tool aesthetic** — Pre-built libraries (Material, Ant) produce a "consumer app" look. Tailwind gives full control over a professional, tool-like aesthetic consistent with inspiration sources (Grafana, Postman, VS Code)
-3. **Headless where it matters** — TanStack Table and Vue Flow handle complex interaction logic; Tailwind handles only the visual layer. No coupling between behavior and styling
-4. **No brand constraints** — Greenfield project with no existing design system to match. Full freedom to define visual identity
+1. **Visual consistency** — The test suite module lives inside the existing viewer shell. Same design system = native feel, no visual seams between existing and new features.
+2. **Zero learning curve** — Solo developer already proficient with the stack. No onboarding cost, no new abstractions to internalize.
+3. **Component coverage** — Headless UI provides the accessible primitives needed: Combobox (autocomplete for user/relation/object fields), Tabs (form ↔ JSON toggle), Dialog (delete confirmation), Listbox (severity/tag selectors).
+4. **Pattern implementability** — All inspiration patterns (tree sidebar, phase timeline, cascading status, inline results) are achievable with Tailwind utilities and custom components. No gap requiring a heavier library.
 
 ### Implementation Approach
 
-**Theme: Dark-first**
-
-Developer tools are overwhelmingly used in dark mode. All inspiration sources (Grafana, Neo4j Browser, VS Code) default to dark. OpenFGA Viewer ships with dark theme as the default. Light mode may be added in a future phase but is not an MVP priority.
-
-**Design Tokens (Tailwind v4.2 `@theme` in CSS):**
-
-```css
-@theme {
-  /* Semantic colors */
-  --color-success: #22c55e;
-  --color-error: #ef4444;
-  --color-warning: #f59e0b;
-  --color-info: #3b82f6;
-
-  /* Surface colors (dark-first) */
-  --color-surface-base: theme(colors.gray.950);
-  --color-surface-card: theme(colors.gray.900);
-  --color-surface-elevated: theme(colors.gray.800);
-  --color-surface-border: theme(colors.gray.700);
-
-  /* Text colors */
-  --color-text-primary: theme(colors.gray.100);
-  --color-text-secondary: theme(colors.gray.400);
-  --color-text-emphasis: theme(colors.white);
-}
-```
-
-| Token Category | Values |
-|---|---|
-| **Semantic colors** | Success green (#22c55e), Error red (#ef4444), Warning amber (#f59e0b), Info blue (#3b82f6) |
-| **Surface colors** | gray-950 base, gray-900 cards, gray-800 elevated, gray-700 borders |
-| **Text colors** | gray-100 primary, gray-400 secondary, white emphasis |
-| **Typography** | Inter (system sans-serif) for UI; JetBrains Mono (ligatures OFF) for code, IDs, DSL (~100KB, shipped with app) |
-| **Spacing** | Tailwind default scale (4px base) |
-| **Border radius** | Consistent rounded-lg for cards/panels, rounded-md for inputs/buttons |
-| **Icons** | Lucide (`lucide-vue-next`) — tree-shakeable, consistent stroke weight, all needed glyphs available |
-
-**Accessibility on dark theme:**
-- Green/red permission feedback never relies on color alone — always paired with Lucide icons (Check/X) and text labels
-- Minimum 4.5:1 contrast ratio for text on dark backgrounds
-- Focus rings visible on all interactive elements
-- Tab components support keyboard navigation (arrow keys to switch tabs)
+- **Existing components reused** — Navigation sidebar items, button styles, badge patterns, card layouts from the viewer module carry over directly.
+- **New components built** — Phase timeline, test case row, suite card, run summary, status badges — all built as Vue 3 components styled with Tailwind utilities on Headless UI primitives where applicable.
+- **CodeMirror 6 theming** — A thin custom theme matching the Tailwind color palette (gray-50/700/900 for backgrounds, green/red/amber for status) ensures the JSON editor doesn't feel like a foreign embed.
 
 ### Customization Strategy
 
-**Base Components (~11):**
-
-| Component | Purpose | Key Behavior |
-|---|---|---|
-| `AppButton` | Primary, secondary, danger variants | Loading state, disabled state, Lucide icon slot |
-| `AppInput` | Text fields with labels | Validation feedback, monospace variant for IDs |
-| `AppTabs` | Tabbed interface (Query Console, Model Viewer) | Active state styling, keyboard navigation (arrow keys), optional badge counts |
-| `AppBadge` | Status indicators (connected/error) | Color-coded with Lucide icon |
-| `AppCard` | Content containers | Dark surface with subtle border |
-| `AppSelect` | Dropdowns (store selector, type filter) | Searchable for long lists |
-| `ConfirmDialog` | Destructive action confirmation | Modal with clear cancel/confirm |
-| `ToastContainer` | Success/error notifications | Auto-dismiss, stackable, Lucide icon per type |
-| `ConnectionBadge` | Header connection status | Green/red dot + text |
-| `EmptyState` | No data / no store selected | Lucide icon + text + primary action button. No illustrations — minimal, functional, developer-tool aesthetic |
-| `LoadingSpinner` | Async operation feedback | Inline and full-view variants |
-
-**Complex Components (library-backed):**
-
-| Component | Library | Customization |
-|---|---|---|
-| `TupleTable` | TanStack Table v8 | Tailwind-styled cells, row selection, filter bar |
-| `ModelGraphView` | Vue Flow + dagre | Custom node components (type badges), dark canvas |
-| `RelationshipGraphCanvas` | Vue Flow + dagre | Custom node components (entity badges), colored edges |
-| `ModelDslView` | Shiki | Dark theme, JetBrains Mono (no ligatures), line numbers, copy button |
-| `GraphNodeDetail` | Custom (Figma inspector pattern) | Slide-in side panel, Tailwind-styled |
+- **Design tokens via Tailwind config** — Status colors (pass green, fail red, running amber, pending gray), spacing scale, and typography are defined in `tailwind.config` and consumed consistently across both viewer and test suite modules.
+- **Component composition over abstraction** — No shared component library project. Components are composed from Tailwind utilities + Headless UI primitives directly in each Vue file. Patterns are consistent by convention (documented in this spec), not by shared code.
+- **CodeMirror integration** — The CodeMirror theme reads from CSS custom properties set by Tailwind, ensuring dark/light mode consistency if added in the future.
 
 ## Defining Core Experience
 
 ### Defining Experience
 
-**"Ask a permission, understand the answer."**
+**"Write what you expect, run it, see if you're right."**
 
-The defining interaction of OpenFGA Viewer is the Check + Why? flow: type a permission question → see green/red instantly → click "Why?" → see the resolution path that explains the decision. In one flow, the user goes from question to understanding.
+The one-sentence description users will tell colleagues: "I write authorization assertions in plain language, run them against an ephemeral store, and see pass/fail instantly." The atomic interaction is: **"Can user:alice view document:budget? → Run → Yes ✓"**
 
-This is what users will describe to colleagues: "You type in a user, a relation, and an object — it tells you yes or no, and then it tells you *why*."
+This is the test-framework mental model (define → execute → assert) applied to authorization policies, with a visual editor replacing code.
 
 ### User Mental Model
 
-Users come from two worlds:
+**Current workflow (without this module):**
+- Developers verify authorization by manually calling `check` via CLI, curl, or the existing viewer's Query Permissions tab — one assertion at a time, no persistence, no grouping, no history
+- It's like testing code by typing expressions in a REPL: useful for exploration, useless for regression testing
 
-**CLI/API users (developers, platform engineers):**
-- Mental model: request/response. They're used to `curl POST /check` → `{"allowed": true}`.
-- Our tool preserves this (input → result) but adds visual explanation on top.
-- Pain points we replace: `curl` + JSON parsing → visual forms + colored results. Reading raw Expand output → "Why?" shows a readable resolution path. Guessing which tuple is missing → relationship graph makes gaps visible.
+**Mental model they bring:**
+- Test frameworks (Jest, Playwright, pytest): "I define assertions, I run them, I see red/green"
+- The module adopts this model but replaces code with a visual editor and replaces local test fixtures with ephemeral OpenFGA stores
 
-**Business rule users (project managers, stakeholders):**
-- Mental model: policy verification. They think "Can Sara access the roadmap?" not `user:sara / viewer / document:roadmap`.
-- Our tool meets them with labeled fields (User, Relation, Object) and visual answers (green/red + path).
-- Pain points we replace: asking a developer "do I have access?" → self-service query console. Trusting the developer's word → seeing the evidence themselves.
-
-> **Future vision:** Natural language query input — users type "Can Sara access the roadmap?" and the tool translates it to structured fields (`user:sara` / `viewer` / `document:roadmap`) using model context (known types, relations, entities). This would make the Query Console fully accessible to non-technical stakeholders without learning OpenFGA syntax.
+**Where confusion is likely:**
+- The ephemeral store concept — "why doesn't it run against my real store?" — needs clear messaging in the UI ("Tests run in an isolated environment to protect your data")
+- Fixture vs. existing tuples — users may expect tests to use the tuples already in their connected store. The fixture concept (suite carries its own data) needs to be discoverable, not assumed
 
 ### Success Criteria
 
-| Criterion | Target |
-|---|---|
-| Time from Query Console to first result | < 10 seconds (user who knows their inputs) |
-| Result clarity | Unambiguous without reading text — color + icon alone communicate allowed/denied |
-| "Why?" expansion load time | < 1 second (single Expand API call) |
-| Non-technical usability | A project manager can run a check and understand the result without developer help |
-| Re-query efficiency | Change one field, hit Enter — no re-navigation, no lost state |
+1. **"This just works"** — A new user creates a test case, hits Run, and sees results within 30 seconds. No configuration, no prerequisite steps beyond having a connected OpenFGA instance.
+2. **"I feel smart"** — The sentence rendering makes the user feel they've written something readable and shareable, not just filled in a form. The output looks like documentation.
+3. **"I trust this"** — The phase timeline shows every step of execution. The user never wonders "is it stuck?" or "what's happening?" The form ↔ JSON sync indicator confirms nothing is lost.
+4. **"This is fast"** — Autocomplete responds in <100ms. Editor mode switching is instant. Run initiation is a single action. Results appear as each test completes, not all at once at the end.
 
 ### Novel UX Patterns
 
-The defining experience combines **established patterns** with **one novel element**:
+**Established patterns adopted:**
+- Hierarchical editor with collapsible tree (Postman collections)
+- Pass/fail cascading status in tree view (Playwright UI Mode)
+- Phase timeline with expandable steps (GitHub Actions)
+- Form ↔ JSON dual-mode toggle (VS Code Settings)
 
-**Established (low risk):**
-- Input → Result layout (Postman pattern) — users already know this
-- Tabbed query types (familiar from API tools)
-- Green/red visual feedback (universal affordance)
-- Monospace input fields for technical identifiers
-
-**Novel (the differentiator):**
-- Inline "Why?" expansion on Check results — shows the resolution path as a readable chain
-- The novelty is low-risk because:
-  - It's opt-in (click to expand) — doesn't complicate the base flow
-  - Uses a familiar breadcrumb/chain visual metaphor
-  - Builds on OpenFGA's existing Expand API — no new backend logic needed
+**Novel combination — our unique twist:**
+- **Sentence rendering** layered on top of the established test-case form. The same data (`user`, `relation`, `object`, `expected`) is displayed as "Can user:alice view document:budget? → Yes" in sentence mode and as structured JSON in code mode. This transforms a developer testing tool into readable policy documentation — the bridge between Marco and Alessia.
+- **Failure sentence rendering** — When a test fails, the sentence becomes the primary diagnosis surface: "Can user:alice view document:budget? → Expected: **Yes**, Got: **No**" with color-coded mismatch. Alessia can understand failures without interpreting JSON diffs or asking Marco.
+- **Run as narrative** — the phase timeline tells the story of the ephemeral store lifecycle (created → loaded → tested → destroyed). This is novel in the testing tool space, where execution is typically a black box.
 
 ### Experience Mechanics
 
-**The Check + Why? Flow:**
+**1. Initiation:**
+- User clicks "+ Test Case" button in a group panel, or navigates to JSON mode and types directly
+- Autocomplete activates on focus for user, relation, and object fields, sourced from the connected store's authorization model
+- Keyboard shortcuts avoid browser collisions (no `Ctrl+N`); rely on in-context button actions and editor-scoped bindings
 
-| Phase | What Happens | UX Detail |
-|---|---|---|
-| **1. Initiation** | User navigates to Query Console, Check tab is default | Tab is pre-selected. If a store is active, fields are ready. If not, EmptyState guides to store selection |
-| **2. Input** | User fills 3 fields: User, Relation, Object | Monospace input fields (JetBrains Mono). AppSelect for Relation (populated from current model). User and Object are free text with type prefix hint (`user:`, `document:`) |
-| **3. Execute** | User clicks "Check" or presses Enter | AppButton with Lucide Play icon. Keyboard shortcut for power users |
-| **4. Result** | Green checkmark + "Allowed" or Red X + "Denied" | Large, unmistakable. Centered below the input. Result appears in < 1 second |
-| **5. Explain** | User clicks "Why?" below the result | Expands inline: shows resolution path as a chain (`user:marco → member of team:backend → viewer on document:specs`). For denials: shows where the chain breaks with a red gap |
-| **6. Next action** | User modifies one field and re-runs, or navigates to graph | Input fields retain values. Change one field, hit Enter again. Or click an entity in the "Why?" path to jump to Relationship Graph |
+**2. Interaction:**
+- **Form mode:** 4 fields — user (Combobox), relation (Combobox), object (Combobox), expected (toggle true/false). Optional metadata expands on demand: description, tags, severity.
+- **JSON mode:** CodeMirror 6 editor with syntax highlighting, bracket matching, and validation. Edits reflect immediately in form mode.
+- **Sentence preview:** Live rendering below the form: "Can user:alice view document:budget? → Yes" updates as fields change.
+
+**3. Run Granularity:**
+- **Suite-level:** "Run Suite" button or `Ctrl+Enter` from anywhere in the editor. Full phase timeline with narrative progression.
+- **Group-level:** Run icon on each group header. Same phase timeline, scoped to group's test cases.
+- **Single-test:** Run icon on each test case row. **Compact inline result** — the row flips directly to pass/fail with a duration badge, skipping the full phase timeline (4 phases for 1 check is overkill UX). Provisioning/cleanup happens transparently.
+
+**4. Feedback:**
+- **Phase timeline (suite/group runs):** Provisioning (spinner, elapsed timer ticking) → Fixtures loaded ✓ → Running checks (3/10, 4/10... progress counter) → Cleanup ✓
+- **Per-test results:** Each test case row flips from pending (gray) → running (amber spinner) → pass (green ✓) or fail (red ✗) as results arrive via polling.
+- **Failure detail:** Sentence view shows "Expected: **Yes**, Got: **No**" inline with color coding. Drill-down panel shows full test case definition for editing.
+- **Error handling:** If provisioning fails, the timeline shows the failed phase with an expandable error message. No silent failures.
+
+**5. Completion:**
+- **Summary badge:** "8/10 passed" with pass/fail/total counts and total duration.
+- **Fail-first sorting:** Failed tests float to the top of the results list.
+- **Next action:** User edits the failing assertion or the authorization model, then runs again. The loop restarts.
 
 ## Visual Design Foundation
 
 ### Color System
 
-**Dark-first theme** — all colors optimized for dark backgrounds.
+**Inherited from existing viewer** — Tailwind v4.2 default palette with existing project customizations.
 
-**Semantic Colors (defined in `@theme`):**
+**New semantic colors for test suite module:**
 
-| Token | Hex | Usage |
-|---|---|---|
-| `--color-success` | #22c55e | Allowed/permitted, successful operations, connected status |
-| `--color-error` | #ef4444 | Denied/forbidden, failed operations, disconnected status |
-| `--color-warning` | #f59e0b | Warnings, destructive action confirmations |
-| `--color-info` | #3b82f6 | Informational, links, active states |
+| Semantic Role | Tailwind Token | Usage |
+|---------------|---------------|-------|
+| Pass | `green-500` / `green-50` (bg) | Passed test cases, completed phases, summary badge |
+| Fail | `red-500` / `red-50` (bg) | Failed test cases, failed phases, error messages |
+| Running | `amber-500` / `amber-50` (bg) | Active phase, currently executing test, spinner accent |
+| Pending | `gray-400` / `gray-50` (bg) | Tests not yet executed, queued phases |
+| Skipped | `gray-300` | Tests excluded from run |
+| Info | `blue-500` / `blue-50` (bg) | Informational badges (tags, severity), sync indicator |
 
-**Surface Colors:**
-
-| Token | Hex | Usage |
-|---|---|---|
-| `--color-surface-base` | gray-950 | Page background |
-| `--color-surface-card` | gray-900 | Cards, panels, sidebar |
-| `--color-surface-elevated` | gray-800 | Hover states, active items, elevated surfaces |
-| `--color-surface-border` | gray-700 | Borders, dividers, subtle separators |
-
-**Text Colors:**
-
-| Token | Value | Usage |
-|---|---|---|
-| `--color-text-primary` | gray-100 | Primary content, labels, headings |
-| `--color-text-secondary` | gray-400 | Secondary info, timestamps, metadata |
-| `--color-text-emphasis` | white | High-emphasis text, active navigation items |
-
-**Graph Node Colors (Vue Flow) — Deterministic Palette:**
-
-OpenFGA models have arbitrary type names. Instead of hardcoding 3 categories, use a palette of 8 visually distinguishable colors. Each type gets a deterministic color via hash of the type name (stable across sessions).
-
-```typescript
-const TYPE_COLORS = [
-  '#3b82f6', // blue
-  '#8b5cf6', // purple
-  '#f59e0b', // amber
-  '#10b981', // emerald
-  '#ec4899', // pink
-  '#06b6d4', // cyan
-  '#f97316', // orange
-  '#84cc16', // lime
-]
-// hash(typeName) % TYPE_COLORS.length → stable color
-```
-
-All 8 colors pass 4.5:1 contrast ratio on gray-950 backgrounds.
-
-| Element | Color | Usage |
-|---|---|---|
-| Type nodes | Deterministic from palette | Each type gets a stable color based on name hash |
-| Relation edges | Gray (#9ca3af) | Default edge color with relation label |
-| Highlighted path | Green/Red (#22c55e / #ef4444) | Future: "Why?" resolution path on graph |
+**Status color principle:** 4 colors maximum in any single view (pass/fail/running/pending). No gradients. Status is always color + icon — never color alone (color-blind accessibility).
 
 ### Typography System
 
-| Level | Size | Weight | Font | Usage |
-|---|---|---|---|---|
-| Page title | 24px (text-2xl) | 600 (semibold) | Inter / system sans | View titles: "Model Viewer", "Query Console" |
-| Section heading | 18px (text-lg) | 600 (semibold) | Inter / system sans | Card headers, panel titles |
-| Body | 14px (text-sm) | 400 (normal) | Inter / system sans | Labels, descriptions, table headers |
-| Small | 12px (text-xs) | 400 (normal) | Inter / system sans | Timestamps, metadata, secondary info |
-| Code / IDs | 14px (text-sm) | 400 (normal) | JetBrains Mono | `user:alice`, `document:roadmap`, DSL code |
-| Code small | 12px (text-xs) | 400 (normal) | JetBrains Mono | Inline references, resolution paths |
+**Inherited from existing viewer** — system font stack via Tailwind defaults.
 
-**Line heights:** 1.5 for body text, 1.25 for headings, 1.6 for code blocks.
+**Test suite module additions:**
 
-**Font loading:** `@fontsource/jetbrains-mono` via npm — tree-shakeable, import only weights 400 + 700, Vite handles optimization. Ligatures OFF. System sans-serif stack as primary UI font (Inter if available, falls back to system).
+| Element | Style | Purpose |
+|---------|-------|---------|
+| Sentence rendering | `text-base` (16px), regular weight, proportional font | "Can user:alice view document:budget? → Yes" — reads as prose |
+| Technical tokens in sentences | `text-base bg-gray-100 rounded px-1` (background pill) | `user:alice`, `viewer`, `document:budget` — visually distinct without breaking reading rhythm. Pills instead of font-mono switching keep the sentence feeling like prose with highlighted terms |
+| Phase timeline labels | `text-sm font-medium` | "Provisioning", "Loading fixtures", "Running checks" |
+| Summary counts | `text-2xl font-bold` | "8/10" in run summary badge |
+| CodeMirror editor | `font-mono text-sm` | JSON editing — matches typical code editor sizing |
+| Test case metadata | `text-xs text-gray-500` | Description, tags, severity — secondary information |
+
+**Tone:** Professional-clean, not playful. No decorative typography. The sentence rendering is the personality — the typography gets out of the way.
 
 ### Spacing & Layout Foundation
 
-**Density:** Compact-comfortable — information-dense enough for developer workflows, with enough breathing room for graph visualizations.
+**Layout feel:** Dashboard — airy and spacious, not dense.
 
-**Spacing Scale (Tailwind default, 4px base):**
+**Spacing scale:** Tailwind default (4px base unit). Key spacing decisions:
 
-| Token | Value | Usage |
-|---|---|---|
-| gap-2 | 8px | Tight spacing: icon + label, badge internals |
-| gap-3 | 12px | Form field internal padding |
-| gap-4 | 16px | Default component gap: between cards, form fields, table rows |
-| gap-6 | 24px | Section gap: between major sections within a view |
-| p-6 | 24px | Content area page padding |
+| Context | Spacing | Rationale |
+|---------|---------|-----------|
+| Suite cards in list | `gap-4` (16px) | Breathing room between cards, scannable dashboard feel |
+| Groups within suite editor | `gap-6` (24px) | Clear visual separation between groups |
+| Test cases within group | `gap-2` (8px) | Tighter grouping — test cases belong together |
+| Phase timeline steps | `gap-3` (12px) | Vertical rhythm that reads as a sequence |
+| Form fields | `gap-4` (16px) | Standard form spacing, comfortable for mouse targets |
+| Section padding | `p-6` (24px) | Generous panel padding, dashboard feel |
 
-**Layout Structure:**
+**Layout structure:**
+- **Suite list view:** Card grid or list (responsive), each card shows name, description, tags, last-run badge
+- **Suite editor view:** Two-column — collapsible left panel (tree navigation: groups + test cases, ~280px expanded, thin icon strip when collapsed), right panel (editor: form/JSON tabs + run controls)
+- **Run summary badge:** Positioned in the **editor panel header**, always visible regardless of tree panel state. "8/10 passed" is the most important status information and must never be hidden.
+- **Run results view:** Integrated into the editor — results appear below/alongside the test case definitions, not on a separate page
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  Header (56px): Logo | Title | ConnectionBadge | Store  │
-├──────┬──────────────────────────────────────────────────┤
-│      │                                                  │
-│ Side │         Content Area (flex-1, p-6)               │
-│ bar  │                                       ┌────────┐ │
-│      │                                       │Inspect.│ │
-│64px  │                                       │ Panel  │ │
-│(icon)│                                       │(320px) │ │
-│ or   │                                       │overlay │ │
-│240px │                                       │on-     │ │
-│(full)│                                       │demand  │ │
-│      │                                       └────────┘ │
-└──────┴──────────────────────────────────────────────────┘
-```
+**Dashboard principle:** White space is a feature, not waste. Every element has room to breathe. This differentiates the module from dense developer tools and supports the "calm confidence" emotional goal.
 
-| Layout Element | Size | Behavior |
-|---|---|---|
-| Header | 56px height (h-14) | Fixed top, always visible. Three-state display (see Header States below) |
-| Sidebar | 240px expanded / 64px collapsed | Collapsible: icon-only mode recovers canvas space. State persisted in localStorage. Toggle via button or keyboard shortcut |
-| Content area | flex-1 | Fills remaining space, scrollable. At 1280px minimum: 976px (sidebar collapsed) or 800px (sidebar expanded) |
-| Inspector panel | 320px width (w-80) | **Overlay mode** — floats over content with subtle backdrop, doesn't push. Graph canvas keeps full width. Slides in from right on node click, dismiss on click-outside or Esc |
+### CodeMirror 6 Theme Integration
 
-**Header State Machine:**
+The CodeMirror 6 JSON editor uses its own `EditorView.theme()` API, not CSS utility classes. Integration approach:
 
-| State | Badge | Store Selector | Behavior |
-|---|---|---|---|
-| Connected + store selected | Green dot + "Connected" | Store name displayed, dropdown to switch | Full functionality, all views available |
-| Connected + no store | Green dot + "Connected" | "Select a store..." with pulsing prompt, click opens Store Admin | Views show EmptyState guiding to store selection |
-| Disconnected / error | Red dot + "Connection error" | Disabled, grayed out | Banner or toast with error details, link to connection settings |
-
-No dead ends — every header state tells the user what to do next.
+- Define a single `tailwindCodeMirrorTheme` module that maps Tailwind color hex values to CodeMirror theme facets
+- Reference the same hex values from `tailwind.config` — one source of truth for colors
+- Do not attempt to make CodeMirror consume Tailwind utility classes (maintenance trap)
+- Theme covers: background, text color, selection, bracket matching, syntax highlighting (strings, numbers, keys, booleans mapped to Tailwind palette)
 
 ### Accessibility Considerations
 
-- **Color independence:** Green/red permission feedback always paired with Lucide icons (Check/X) and text labels ("Allowed"/"Denied"). Graph node colors supplemented by type name labels on each node. Never color-alone.
-- **Contrast ratios:** Minimum 4.5:1 for all text on dark backgrounds. gray-100 on gray-950 = ~15.4:1. gray-400 on gray-950 = ~7.2:1. All 8 graph palette colors pass 4.5:1 on gray-950. All exceed WCAG AA.
-- **Focus indicators:** Visible focus rings (ring-2 ring-info) on all interactive elements — buttons, inputs, tabs, graph nodes.
-- **Keyboard navigation:** AppTabs support arrow key switching. Graph views support Tab to cycle nodes. Sidebar collapse/expand via keyboard shortcut. Inspector panel dismiss via Esc. All forms navigable with Tab/Shift+Tab.
-- **Font sizing:** Base 14px (text-sm) is readable at standard desktop viewing distance. No text smaller than 12px (text-xs).
+- **Color + icon:** Every status uses both color and an icon (✓, ✗, spinner, dash). Never color alone.
+- **Contrast ratios:** All text meets WCAG 2.1 AA minimum (4.5:1 for normal text, 3:1 for large text). Tailwind's default palette achieves this for the chosen tokens.
+- **Keyboard navigation:** All interactive elements (buttons, form fields, tree nodes, tabs) must be focusable and operable via keyboard. Headless UI components provide this by default.
+- **Focus indicators:** Visible focus rings on all interactive elements (Tailwind's `ring` utilities).
+- **Screen reader support:** Phase timeline steps use `aria-label` for status ("Provisioning: completed", "Running checks: in progress 4 of 10"). Test case pass/fail uses `aria-live="polite"` for dynamic updates.
 
 ## Design Direction Decision
 
 ### Design Directions Explored
 
-A single cohesive design direction was developed iteratively through steps 6-8, with party mode reviews at each stage. Rather than exploring divergent visual approaches, the team converged on a unified direction driven by:
+Three layout directions were prototyped as an interactive HTML showcase (`ux-design-directions.html`):
 
-- Architecture constraints (Tailwind v4.2, Vue Flow, TanStack Table, Shiki)
-- Inspiration analysis (Postman, Grafana, Neo4j, Figma, VS Code patterns)
-- Emotional design goals (confident control, transparency, clarity)
-- Target audience (developer tool, dark-first, desktop-first)
-
-An interactive HTML showcase was generated at `ux-design-directions.html` showing the design direction applied to all key views.
+- **Direction A (Dashboard First)** — Card grid suite list, narrow tree + wide editor, results on a separate tab with summary banner and phase timeline
+- **Direction B (Editor First)** — Compact table suite list, equal 50/50 split editor, results in a separate bottom-panel-style tab
+- **Direction C (Hybrid)** — Full-width card suite list, collapsible tree + dominant editor, results integrated inline in the editor panel
 
 ### Chosen Direction
 
-**"Professional Dark Tool"** — A dark-first, compact-comfortable developer tool aesthetic inspired by Grafana, VS Code, and Postman. Clean surfaces with subtle borders, monospace code elements, color-coded graph nodes, and unmistakable green/red permission feedback.
-
-**Key visual characteristics:**
-- Dark surfaces (gray-950 base) with card elevation (gray-900) and subtle gray-700 borders
-- High-contrast text (gray-100 on dark) with secondary gray-400 for metadata
-- Monospace JetBrains Mono for all code/ID display, system sans-serif for UI
-- 8-color deterministic palette for graph nodes, stable by type name hash
-- Semantic color system: green (success/allowed), red (error/denied), amber (warning), blue (info/active)
-- Collapsible sidebar (240px ↔ 64px) for maximum content space
-- Overlay inspector panel (320px) on graph node click
+**Direction C: Hybrid** — combines the dashboard feel of Direction A's suite list with the editor efficiency of Direction B, while uniquely integrating results inline and providing a collapsible tree panel.
 
 ### Design Rationale
 
-1. **Audience alignment** — Developer tools are expected to be dark, dense, and professional. This direction matches the tools our users already use daily (VS Code, Grafana, terminal).
-2. **Functional clarity** — The dark background makes colored elements (graph nodes, permission results, status badges) pop visually. Information hierarchy is clear without competing visual noise.
-3. **Implementation efficiency** — Single theme (dark-first) means no dual-theme CSS complexity. Tailwind utilities + design tokens in `@theme` provide consistency with minimal effort.
-4. **Emotional alignment** — Dark, clean surfaces convey "professional tool" not "consumer app." Subtle animations (pulsing store selector, slide-in inspector) add polish without distraction.
+1. **No separate results page** — Results appear integrated in the editor panel (failed test sentence rendering, inline pass/fail per row). This preserves the edit → run → review loop without context switching.
+2. **Collapsible tree panel** — ~280px expanded, thin icon strip when collapsed. Preserves dashboard spacing on standard screens, reclaims space when the editor needs room. Collapsed tree badges update live during runs from the same Pinia store as the expanded tree (single data source, two render paths).
+3. **Run summary in editor header** — "8/10 passed" badge is always visible regardless of tree panel state. The most critical status information is never hidden.
+4. **Full-width suite cards** — Single-column card layout capped at `max-w-3xl` (768px), left-aligned. Run badge positioned inline next to the suite name (not exiled to the far right margin) for a tight scan path on wide screens.
+5. **Two tabs only** — "Suites" (list) and "Editor" (tree + form/JSON + results). No separate Results tab. Fewer navigation targets, faster mental model.
+6. **Suite-level context menu** — Three-dot icon on each suite card opens a Headless UI `Menu` dropdown with Edit Metadata, Import, Export, Delete. This keeps the Editor tab focused on the edit → run → review loop while the Suite List serves as the management hub.
 
 ### Implementation Approach
 
-**HTML Showcase Reference:** `_bmad-output/planning-artifacts/ux-design-directions.html`
-
-The showcase demonstrates 6 interactive views that serve as implementation reference:
-
-| Mockup | Key Design Patterns Demonstrated |
-|---|---|
-| Query Console | Input → result layout, green/red feedback, "Why?" expansion, tab interface |
-| Model Viewer | DSL syntax highlighting with line numbers, code viewer aesthetic |
-| Tuple Manager | Data table with visible filters, batch selection, pagination |
-| Store Admin | Card-based store list with active indicator, action buttons |
-| Header States | Three-state header machine, empty state, confirm dialog |
-| Components | Full base component library: buttons, inputs, badges, tabs, toasts, results |
-
-All mockups use the exact color tokens, typography, spacing, and component patterns defined in the Visual Design Foundation and Design System Foundation sections. They serve as the visual contract for implementation.
+- **Suite List View:** `SuiteList.vue` renders full-width `SuiteCard` components in a single-column `space-y-4 max-w-3xl` layout. Each card shows name + inline run badge, description, tags, context menu (three-dot), and run button.
+- **Suite Editor View:** Two-panel layout — `SuiteTree.vue` (collapsible, ~280px) on the left, `SuiteEditorPanel.vue` on the right. Editor panel has sticky header with form/JSON toggle, sync indicator, run summary badge, and run button.
+- **Integrated Results:** Test case rows in the tree show pass/fail icons. Selected test case in the editor shows sentence rendering with failure detail inline. Run timeline is a collapsible `<details>` element below the editor.
+- **Collapsed Tree:** `SuiteTreeCollapsed.vue` renders a thin icon strip with group-level pass/fail summary badges. Badges are reactive to the same `runs` Pinia store, ensuring live updates during execution.
 
 ## User Journey Flows
 
-### Journey 0: Empty Store — From Creation to First Data
+### J1: First Suite Creation (Marco)
 
-**User:** Any user who creates or selects an empty store
-**Goal:** Get from an empty store to a productive state
-**Entry point:** Store Admin (create) or Header (select empty store)
+**Goal:** Marco creates his first test suite with test cases and runs it successfully.
 
-```mermaid
-flowchart TD
-    A[User creates new store / selects empty store] --> B[Auto-navigate to Model Viewer]
-    B --> C[EmptyState: 'No authorization model — Import a model to get started']
-    C --> D[User clicks 'Go to Import/Export']
-    D --> E[Import/Export view]
-    E --> F[User uploads JSON file with model + tuples]
-    F --> G[Toast: 'Import complete — model + 247 tuples']
-    G --> H[Auto-navigate to Model Viewer]
-    H --> I[Model graph renders — 'aha' moment]
-
-    C --> J[Alternative: user adds model via API/CLI externally]
-    J --> K[User refreshes or navigates to Model Viewer]
-    K --> I
-```
-
-**EmptyState guide per view:**
-
-| View | EmptyState Message | Action Button |
-|---|---|---|
-| Model Viewer | "No authorization model loaded" | "Go to Import/Export" |
-| Tuple Manager | "No tuples in this store" | "Add Tuple" or "Go to Import/Export" |
-| Query Console | "No model loaded — a model is required to run queries" | "Go to Model Viewer" |
-| Relationship Graph | "No tuples to visualize" | "Go to Tuple Manager" |
-
-### Journey 1: First Connection — From Launch to First Query Result
-
-**User:** Marco (backend developer, first-time user)
-**Goal:** Connect to an OpenFGA instance and run his first permission query
-**Entry point:** Opens the app in browser
+**Entry point:** Clicks "Test Suites" in sidebar → sees empty state on Suite List.
 
 ```mermaid
 flowchart TD
-    A[App loads] --> B{Backend connected?}
-    B -->|Yes, env vars configured| C[Header: Green badge + 'Connected']
-    B -->|No, connection error| D[Header: Red badge + 'Connection Error']
-    D --> E[Toast: error details]
-    E --> F[User checks env vars / restarts]
-    F --> A
-
-    C --> G{Default store ID configured?}
-    G -->|Yes| H[Header: store name shown]
-    G -->|No| I[Header: 'Select a store...' pulsing]
-
-    I --> J[User clicks store selector]
-    J --> K[Dropdown: list of stores + search]
-    K --> L[User selects a store]
-    L --> M{First store selection in session?}
-    M -->|Yes| N[Auto-navigate to Model Viewer — 'aha' moment]
-    M -->|No| H
-    N --> H
-
-    H --> O[Sidebar: all nav items enabled]
-    O --> P[User clicks 'Query Console']
-    P --> Q[Query Console: Check tab active]
-    Q --> R[User types user:marco in User field]
-    R --> S[User selects 'viewer' from Relation dropdown]
-    S --> T[User types document:specs in Object field]
-    T --> U[User clicks Check or presses Enter]
-    U --> V{API response}
-    V -->|Allowed| W[Green checkmark + 'Allowed' + response time]
-    V -->|Denied| X[Red X + 'Denied' + response time]
-    V -->|Error| Y[Toast: error message]
-
-    W --> Z[User clicks 'Why?']
-    Z --> AA[Resolution path expands inline]
-    AA --> AB[User modifies one field, re-runs]
-
-    X --> Z
+    A[Click Test Suites in sidebar] --> B{Any suites exist?}
+    B -->|No| C[Guided quick start: 3-step onboarding]
+    B -->|Yes| D[Suite List view]
+    C --> C1["Step 1: Name your suite — name, description, tags"]
+    C1 --> C2["Step 2: Import fixture — 'Import current store' one-click CTA"]
+    C2 --> C3["Step 3: Add your first test case"]
+    C3 --> G[Editor tab opens]
+    D --> E[Click '+ New Suite']
+    E --> F[Suite metadata form: name, description, tags]
+    F --> FX{Fixture setup}
+    FX -->|Connected to store| FX1["'Import current store as fixture' — one click"]
+    FX -->|Manual| FX2[Define fixture manually or skip]
+    FX1 --> G
+    FX2 --> G
+    G --> H[Click '+ Group' → name the group]
+    H --> I[Click '+ Test Case' in group]
+    I --> K[Form: user / relation / object / expected with autocomplete]
+    K --> M[Sentence preview updates live]
+    M --> N{Add more tests?}
+    N -->|Yes| I
+    N -->|No| O{Fixture defined?}
+    O -->|Yes| P[Click 'Run Suite' or Ctrl+Enter]
+    O -->|No| OW[Warning tooltip: 'No fixture — add one to run tests']
+    OW --> FX
+    P --> Q[Phase timeline: provisioning → fixtures → checks → cleanup]
+    Q --> R{All passed?}
+    R -->|Yes| S["Green summary badge: 12/12 ✓"]
+    R -->|No| T["Red summary badge: 8/10 — failed tests float to top"]
 ```
 
-**Time to value:** ~30 seconds (pre-configured env vars) to ~60 seconds (manual store selection)
-**First store selection:** Auto-navigates to Model Viewer for the "aha" moment (seeing the model as a graph)
-**Critical decision points:** Store selection (if multiple stores exist)
-**Error recovery:** Connection errors show in header + toast, guide user to check configuration
+**Key UX moments:**
+- Empty state uses guided quick start (3 numbered steps with progress indicator) — disappears after first suite exists
+- "Import current store as fixture" is the zero-friction path for fixture setup
+- Missing fixture produces a warning tooltip on the Run button, not a blocking modal
+- Autocomplete on first field focus is the "this is easy" moment
+- Sentence preview appearing live is the "I feel smart" moment
 
-### Journey 2: Debugging a Permission Issue — Investigation Flow
+### J1b: Suite Import
 
-**User:** Marco (backend developer, experienced user)
-**Goal:** Find out why user:sara can't access document:specs and fix it
-**Entry point:** Query Console (tool is already connected)
+**Goal:** Marco or Monte imports a test suite from a JSON file.
+
+**Entry point:** Suite List → Import button or drag-and-drop on the list view.
 
 ```mermaid
 flowchart TD
-    A[Query Console: Check tab] --> B[User types: user:sara / viewer / document:specs]
-    B --> C[Click Check]
-    C --> D[Red X: 'Denied']
-    D --> E[Click 'Why?']
-    E --> F{Resolution path shows gap}
-    F --> G[Path: user:sara → ??? → document:specs — chain breaks]
-
-    G --> H[User navigates to Tuple Manager]
-    H --> I[Filters: object = document:specs]
-    I --> J[Table shows tuples for document:specs]
-    J --> K[User sees team:backend has viewer, but sara is not in team:backend]
-
-    K --> L[User navigates to Relationship Graph]
-    L --> M[Graph re-fetches tuples on mount — fresh data]
-    M --> N[Searches for user:sara]
-    N --> O[Graph shows sara's connections]
-    O --> P[No edge between sara and team:backend — gap visible]
-
-    P --> Q[User navigates back to Tuple Manager]
-    Q --> R[Clicks 'Add Tuple']
-    R --> S[Form: user:sara / member / team:backend]
-    S --> T[Submit — Toast: 'Tuple added']
-
-    T --> U[User navigates to Query Console]
-    U --> V[Fields still populated: user:sara / viewer / document:specs]
-    V --> W[Click Check]
-    W --> X[Green checkmark: 'Allowed']
-    X --> Y[Click 'Why?' — full resolution path visible]
+    A[Suite List view] --> B[Click 'Import Suite' button or drag JSON file onto list]
+    B --> C[File loaded into CodeMirror preview editor]
+    C --> D[Zod validation runs automatically]
+    D --> E{Valid?}
+    E -->|Yes| F["Preview: 'Will create: Suite Name — 3 groups, 12 tests, fixture with 5 tuples'"]
+    E -->|No| G[CodeMirror lintGutter shows inline error markers]
+    G --> H["Actionable errors: 'line 42: relation field missing in test case 3'"]
+    H --> I[User fixes errors in preview editor]
+    I --> D
+    F --> J[Click 'Import' to confirm]
+    J --> K[Suite appears in Suite List with 'Never run' badge]
 ```
 
-**Cross-view state:** Query inputs persist when navigating away and back (principle: "context flows, never resets")
-**Data freshness:** Graph views and data tables re-fetch on mount — the tuple Marco added is immediately visible when he returns to any view
-**Key pattern:** Query → Investigate (tuples/graph) → Fix (add tuple) → Verify (re-query)
-**Error recovery:** If tuple add fails, toast shows error. User can retry.
+**Key UX moments:**
+- Import validation reuses the same Zod schemas as the API — zero duplication
+- CodeMirror lintGutter shows errors inline in the JSON, not in a separate error list
+- Preview summarizes what will be created before committing
+- Errors are specific and actionable, mapped to line numbers
 
-### Journey 3: Store Backup & Restore — Administration Flow
+### J2: Policy Health Review (Alessia)
 
-**User:** Lucia (platform engineer)
-**Goal:** Backup production store, restore to staging for testing
-**Entry point:** Store Admin
+**Goal:** Alessia checks if authorization policies are healthy across all suites.
+
+**Entry point:** Clicks "Test Suites" in sidebar → scans Suite List.
 
 ```mermaid
 flowchart TD
-    A[Store Admin] --> B[Store list: production, staging, dev]
-    B --> C[User clicks 'Backup' on production-store]
-    C --> D[API exports model + all tuples]
-    D --> E[JSON file downloads: production-store-2026-03-26.json]
-    E --> F[Toast: 'Backup complete — 847 tuples exported']
-
-    F --> G[User clicks connection badge in header]
-    G --> H[Popover: current URL + 'Edit Connection']
-    H --> I[User clicks 'Edit Connection']
-    I --> J[URL field editable + 'Test' button]
-    J --> K[User enters staging instance URL]
-    K --> L[Clicks 'Test Connection']
-    L --> M{Test result}
-    M -->|Success| N[Green: 'Connected' — 'Save' enabled]
-    M -->|Failure| O[Red: error — user corrects URL]
-    O --> K
-    N --> P[User clicks 'Save']
-    P --> Q[Backend reinitializes openfga-client]
-    Q --> R[Header updates: new connection, store list refreshes]
-
-    R --> S[User navigates to Import / Export]
-    S --> T[User clicks 'Import']
-    T --> U[File picker: selects production-store-2026-03-26.json]
-    U --> V{Import to existing or new store?}
-    V -->|New store| W[Dialog: 'Create new store from backup?']
-    W --> X[User confirms, enters store name]
-    X --> Y[API creates store, writes model + tuples]
-    Y --> Z[Toast: 'Import complete — 847 tuples restored']
-    Z --> AA[Header auto-selects new store]
-
-    V -->|Existing store| AB[Warning: 'This will overwrite the current model']
-    AB --> AC[ConfirmDialog: overwrite confirmation]
-    AC -->|Confirm| Y
-    AC -->|Cancel| S
+    A[Click Test Suites in sidebar] --> B[Suite List view]
+    B --> C[Scan run badges on each card — green/red/gray]
+    C --> D{Any red badges?}
+    D -->|No| E["All green — policies healthy, done (<3 seconds)"]
+    D -->|Yes| F[Click card with red badge]
+    F --> G[Editor opens — tree shows failed tests with ✗ icons]
+    G --> H[Failed tests already at top of tree]
+    H --> I[Click failed test]
+    I --> J["Sentence: 'Can user:mallory delete document:budget? → Expected: No, Got: Yes'"]
+    J --> K{Understands the issue?}
+    K -->|Yes| L[Files bug or notifies Marco]
+    K -->|No| M[Reads test description in metadata]
+    M --> L
 ```
 
-**Connection management:** Click connection badge → header popover with URL display, edit, test, and save. No separate settings page.
-**Destructive action protection:** Import to existing store shows ConfirmDialog with clear warning
-**Feedback:** Toast notifications at each step (backup complete, import complete) with tuple counts
+**Key UX moments:**
+- Suite List scan with badges is the "dashboard glance" — readable in <3 seconds
+- Alessia never touches form fields or JSON — she reads sentences and badges only
+- Failure sentence with "Expected: No, Got: Yes" is self-explanatory without developer context
 
-### Connection Management (Header Popover)
+### J3: Run and Debug Failures (Marco)
 
-Clicking the connection badge in the header opens a popover for runtime connection changes:
+**Goal:** Marco runs a suite, identifies failures, fixes them, and re-runs until green.
+
+**Entry point:** Already in Editor tab with a suite open.
 
 ```mermaid
 flowchart TD
-    A[User clicks connection badge] --> B[Popover opens]
-    B --> C[Shows: current URL, connection status]
-    C --> D[User clicks 'Edit Connection']
-    D --> E[URL field becomes editable + 'Test' button appears]
-    E --> F[User enters new URL]
-    F --> G[Clicks 'Test Connection']
-    G --> H{Test result}
-    H -->|Success| I[Green: 'Connected' — 'Save' button enabled]
-    H -->|Failure| J[Red: error message — 'Save' disabled]
-    I --> K[User clicks 'Save']
-    K --> L[Backend reinitializes openfga-client]
-    L --> M[Header updates, store list refreshes]
-    J --> F
+    A[Editor tab — suite loaded] --> B[Click 'Run Suite' or Ctrl+Enter]
+    B --> C[Phase timeline: provisioning → fixtures → checks → cleanup]
+    C --> D[Tree nodes flip: gray → amber → green/red]
+    D --> E[Summary badge updates: 8/10]
+    E --> F[Failed tests float to top in tree]
+    F --> G[Click first failed test]
+    G --> H["Sentence: Expected vs Got with red highlight"]
+    H --> I{Problem in test or in model?}
+    I -->|Test wrong| J[Edit test case fields in form]
+    I -->|Model wrong| K[Switch to model editor in viewer]
+    J --> L[Run single test — compact inline result]
+    K --> M["Return to test suite editor — state preserved (tree selection, scroll, editor mode)"]
+    M --> B
+    L --> N{Passed?}
+    N -->|Yes| O["Row flips to green ✓"]
+    N -->|No| J
+    O --> P{More failures?}
+    P -->|Yes| G
+    P -->|No| Q[Run full suite to confirm]
+    Q --> R["All green: 10/10 ✓"]
 ```
 
-No separate settings page — connection management lives in the header where the context is displayed.
+**Key UX moments:**
+- Run-single-test uses compact inline result (row flip + duration badge), not full phase timeline
+- **Editor state preservation** — when navigating away to model editor and returning, tree selection, scroll position, and form/JSON mode are all preserved (stored in Pinia, not component-local state)
+- The "test wrong" vs "model wrong" fork is the debugging decision point — both paths must be equally accessible
+
+### J5: CI/CD Integration Setup (Dario)
+
+**Goal:** Dario configures a CI pipeline to run a test suite on every PR.
+
+**Entry point:** Suite already exists. Dario needs API details.
+
+```mermaid
+flowchart TD
+    A[Suite List — find target suite] --> B[Context menu → CI Integration]
+    B --> C["Modal shows copyable curl snippet with suite ID pre-filled"]
+    C --> D[Dario copies command to CI config]
+    D --> E["POST /api/suites/:id/run → 202 + runId"]
+    E --> F["Poll: GET /api/runs/:runId"]
+    F --> G{Status?}
+    G -->|pending/provisioning/running| F
+    G -->|completed| H[Exit code 0 — PR passes]
+    G -->|failed| I[Exit code 1 — PR blocked]
+    I --> J["CI log: 'FAIL: Can user:mallory delete document:budget? Expected: No, Got: Yes'"]
+```
+
+**UX touchpoint:** Context menu includes "CI Integration" option showing a copyable curl command with the suite ID pre-filled. Sentence format appears in CI log output too — consistent language across UI and API.
 
 ### Journey Patterns
 
-**Cross-View Investigation Pattern:**
-Query (verify) → Table/Graph (investigate) → Form (fix) → Query (re-verify)
-This pattern repeats across debugging and stakeholder proof journeys. The tool must preserve state across view switches to support it.
+**Navigation: List → Detail → Action**
+All journeys follow: Suite List (scan/select) → Editor (view/edit) → Run (action/feedback). Two tabs, one direction, no dead ends.
 
-**Destructive Action Pattern:**
-User action → ConfirmDialog (clear warning + consequence) → Execute → Toast (confirmation + details)
-Used for: delete store, delete tuple(s), import over existing store.
+**Feedback: Progressive status revelation**
+Status reveals progressively: Suite List shows summary badges → Editor tree shows per-test icons → Selected test shows full sentence with expected/actual. Each level adds detail without requiring the previous level.
 
-**Guided Onboarding Pattern:**
-Missing prerequisite → Header/EmptyState shows what's needed → One-click navigation to fix → Auto-return to original context
-Used for: no connection → check env vars; no store → select/create store.
+**Error: Fail-first + sentence diagnosis**
+Failures always float to the top. Diagnosis is always a readable sentence. Recovery is always "edit and re-run." No error requires leaving the current view.
 
-**Query → Explain Pattern:**
-Execute query → See result (green/red) → Click "Why?" → See resolution path inline → Optionally navigate to graph for visual investigation
-This is the defining interaction pattern of the entire tool.
+**Consistency: Sentence everywhere**
+The sentence format ("Can X do Y to Z? → Expected/Got") appears in: form preview, tree node labels, results, failure detail, import validation, and CI log output. One language across all touchpoints.
 
-**Data Freshness Pattern:**
-Graph views and Model Viewer re-fetch data on every view mount — no caching. When user navigates away, modifies data (add tuple, import), and returns, the view reflects current state automatically. No manual refresh button needed.
-
-**First Store Selection Pattern:**
-When a user selects a store for the first time (no previous navigation in session), auto-navigate to Model Viewer. This ensures the "aha" moment (seeing the model as a graph) happens immediately. Subsequent store switches stay on the current view.
-
-**Empty Store Guidance Pattern:**
-Every view handles the "no data" state with a purposeful EmptyState: icon + message + action button pointing to the logical next step. Empty states are breadcrumbs to productivity, never dead ends.
+**State: Preserved across navigation**
+Editor state (tree selection, scroll position, form/JSON mode, collapsed/expanded tree) persists in Pinia store, surviving navigation to other viewer modules and back.
 
 ### Flow Optimization Principles
 
-1. **Minimize hops to value** — Every journey should reach its first meaningful result in ≤3 clicks from a connected+store-selected state.
-2. **Preserve context across navigation** — Query inputs, table filters, and graph viewport persist when switching views. The user never re-enters data.
-3. **Feedback at every mutation** — Every write operation (add tuple, delete store, import) produces immediate toast confirmation with relevant details (count, name, time).
-4. **Progressive error recovery** — Errors show what went wrong AND what to do next. Connection errors guide to env var check. Query errors show the OpenFGA error message. No dead ends.
-5. **Destructive actions require confirmation, non-destructive don't** — Adding a tuple: inline form, immediate submit. Deleting a store: ConfirmDialog with warning. The friction is proportional to the risk.
-6. **Fresh data on every view mount** — No stale state. Views fetch current data when mounted. The cost is milliseconds; the benefit is never showing outdated information after a mutation in another view.
+1. **Minimum clicks to value** — First run: sidebar → new suite → import fixture → add test → run = 5 actions. Returning run: sidebar → click suite → run = 2 actions.
+2. **No dead ends** — Every view has a clear next action. Empty states have guided quick start. Missing fixtures have warning with CTA. Failed tests have "edit" affordance.
+3. **Inner loop speed** — Edit-single-test → run-single-test → check must complete in <5 seconds perceived time. Compact inline result makes this possible.
+4. **Scan before drill** — Suite List badges give health overview without clicking. Tree icons give per-test status without selecting. Sentence gives diagnosis without expanding. Each layer is self-sufficient.
+5. **Import is validate-then-confirm** — Upload → inline Zod validation in CodeMirror → preview summary → confirm. Never blind import.
 
 ## Component Strategy
 
-### Design System Components (Tailwind + Libraries)
+### Design System Components (Reused from Existing Codebase)
 
-Components provided by the technology stack — no custom code needed for core behavior:
+The existing `components/common/` library provides 12 base components that cover the test suite module's foundational needs:
 
-| Layer | Technology | Components It Powers |
-|---|---|---|
-| Utility CSS | Tailwind v4.2 | All styling via utility classes and `@theme` tokens |
-| Interaction primitives | Headless UI (`@headlessui/vue`) | `AppTabs`, `AppSelect`, `SearchableSelect`, `ConfirmDialog`, `ConnectionPopover`. Handles ARIA, focus trap, positioning. ~12KB gzipped, tree-shakeable, from the Tailwind team |
-| Data table | TanStack Table v8 | Pagination, sorting, filtering, row selection. Styled with Tailwind |
-| Graph rendering | Vue Flow + dagre | Node/edge rendering, zoom/pan, layout. Custom node components for styling |
-| Syntax highlighting | Shiki | DSL code display with theme support |
-| Icons | Lucide (`lucide-vue-next`) | Tree-shakeable, consistent icon set |
-| Font | `@fontsource/jetbrains-mono` | Monospace, weights 400+700, ligatures OFF |
+| Existing Component | Test Suite Usage |
+|---|---|
+| `AppBadge` | Run status badges (variant mapped: completed→success, failed→error, running→warning, pending→info) |
+| `AppButton` | All action buttons; `loading` prop for Run Suite during execution |
+| `AppCard` | Base wrapper for `SuiteCard` |
+| `AppInput` | Test case form fields; `monospace` prop already supported |
+| `AppTabs` | Form ↔ JSON editor toggle |
+| `SearchableSelect` | Autocomplete for user, relation, object fields (Headless UI Combobox) |
+| `AppSelect` | Severity selector, tag selector |
+| `EmptyState` | Empty suite list (icon + title + message + CTA pattern) |
+| `ConfirmDialog` | Delete suite confirmation, discard unsaved changes |
+| `FileImportDropzone` | Suite import — drag-and-drop JSON with built-in structure validation |
+| `LoadingSpinner` | Phase timeline active step indicator |
+| `ToastContainer` | Run complete/failed toast notifications |
+
+**No new base components needed.** The existing library is sufficient.
 
 ### Custom Components
 
-#### Base Components (13)
+9 custom components specific to the test suite module, all placed in `components/test-suites/`:
 
-Custom components are thin wrappers around Headless UI primitives (where applicable) + Tailwind styling + business logic.
+#### SuiteCard
 
-| Component | Backed By | States | Key Interactions | Accessibility |
-|---|---|---|---|---|
-| `AppButton` | Native | default, hover, active, loading, disabled | Click, keyboard Enter/Space | `aria-disabled`, `aria-busy` for loading |
-| `AppInput` | Native | default, focus, error, disabled | Type, paste, clear. Monospace variant via prop | `aria-invalid` + `aria-describedby` for error |
-| `AppTabs` | Headless UI `TabGroup` | default, active, hover per tab | Click tab, arrow keys Left/Right | `role="tablist"`, `role="tab"`, `aria-selected` |
-| `AppBadge` | Native | variants: success, error, warning, info | Display only | `aria-label` describing status |
-| `AppCard` | Native | default, hover (if clickable) | Optional click handler | Semantic `<section>` |
-| `AppSelect` | Headless UI `Listbox` | default, open, selected, disabled | Click to open, arrow keys, Enter to select. For lists < 10 items | `aria-expanded`, `aria-activedescendant` |
-| `SearchableSelect` | Headless UI `Combobox` | default, open, filtering, selected | Type to search, arrow keys, Enter to select. For lists ≥ 10 items | `role="combobox"`, `aria-expanded`, `aria-autocomplete` |
-| `ConfirmDialog` | Headless UI `Dialog` | open/closed | Confirm/Cancel buttons, Esc to dismiss | `role="alertdialog"`, `aria-modal`, focus trap |
-| `ToastContainer` | Native | auto-dismiss after 5s, stackable | Dismiss on click | `role="status"`, `aria-live="polite"` |
-| `ConnectionBadge` | Native | connected, error | Click opens ConnectionPopover | `aria-label` with status text |
-| `EmptyState` | Native | per-view variants | Action button click | Descriptive text, focusable action |
-| `LoadingSpinner` | Native | inline, full-view | Display only | `aria-label="Loading"`, `role="status"` |
-| `TypeBadge` | Native | display only | Renders colored type pill (deterministic hash from palette) + monospace ID. Optionally clickable to navigate | `aria-label` with full identifier |
+**Purpose:** Suite list item displaying suite identity, status, and actions.
+**Reuses:** `AppCard`, `AppBadge`, Headless UI `Menu`
+**Content:** Suite name (inline with run badge), description, tags, last-run timestamp, test/group counts
+**Actions:** Click to open editor, context menu (Edit Metadata, CI Integration, Import, Export, Delete), run button
+**States:** Default, hover (card-hover elevation), has-failures (red border accent), never-run (gray badge)
+**Accessibility:** Keyboard-navigable card, context menu via Headless UI Menu (arrow keys, Enter, Escape)
 
-**`TypeBadge` usage:** Used across the entire app wherever type-prefixed identifiers appear — TupleTable cells, ResolutionPath nodes, GraphNodeDetail relations, AddTupleForm hints, Query Console result details. Single source of truth for type → color mapping.
+#### SuiteTree
 
-#### Feature Components (9)
+**Purpose:** Collapsible hierarchical navigator for groups and test cases within a suite.
+**Reuses:** Lucide icons, `SentenceView`
+**Content:** Groups (collapsible) → test cases (selectable). Each test case shows sentence-mode label with pass/fail icon.
+**Actions:** Click group to expand/collapse, click test case to select (loads in editor panel), run icon per group and per test case, collapse panel toggle
+**States:** Expanded/collapsed groups, selected test case (blue highlight), pass/fail/pending/running per node
+**Accessibility:** Tree role with `aria-expanded`, arrow key navigation between nodes, Enter to select
 
-| Component | Purpose | Backed By | States | Key Interactions |
-|---|---|---|---|---|
-| `ConnectionPopover` | Runtime connection editing via header | Headless UI `Popover` | display, editing, testing, success, error | Click badge to open, edit URL, test, save. Esc/click-outside dismiss |
-| `ResolutionPath` | Inline "Why?" expansion showing permission chain | Native | collapsed, expanded, loading | Chain of `TypeBadge` nodes with arrows. Clickable entities navigate to Relationship Graph |
-| `WhyButton` | Trigger for "Why?" expansion | Native | default, loading, expanded | Click toggles ResolutionPath. Fetches Expand API on first click |
-| `AddTupleForm` | Inline form for adding tuples | Native | default, submitting, success, error | 3 fields (user, relation, object) + submit. Clears on success. Toast on result |
-| `FileImportDropzone` | File picker + drag-and-drop for JSON import | Native | idle, dragover, uploading, success, error | Click to open file picker, drag to drop. Validates JSON before upload |
-| `StoreCard` | Store list item with metadata + actions | Native | default, active (selected), hover | Click to select, Backup/Delete action buttons |
-| `GraphNodeDetail` | Inspector panel overlay for graph node detail | Native | slides in from right | Close on Esc/click-outside. Relations, connected entities, "Query this entity" action |
-| `ModelDslView` | DSL code viewer with Shiki highlighting | Shiki | default, loading | Copy button, line numbers. Read-only |
-| `ModelGraphView` | Authorization model as Vue Flow graph | Vue Flow + dagre | default, loading, node-selected | Click node → GraphNodeDetail. Type nodes use `TypeBadge` colors. Zoom/pan/drag |
+#### SuiteTreeCollapsed
+
+**Purpose:** Thin icon strip showing group-level summary when tree panel is collapsed.
+**Reuses:** `AppBadge`
+**Content:** Expand toggle + one badge per group showing pass/fail ratio
+**States:** Badges update live during runs (reactive to `runs` Pinia store)
+**Accessibility:** Each badge has tooltip with group name and counts
+
+#### TestCaseForm
+
+**Purpose:** 4-field editor for a single test case with live sentence preview.
+**Reuses:** `SearchableSelect`, `AppInput`, `SentenceView`
+**Content:** User (Combobox), Relation (Combobox), Object (Combobox), Expected (toggle: Allowed/Denied). Expandable metadata section: description, tags, severity.
+**Actions:** Field editing with autocomplete, expected toggle, metadata expand/collapse, run-single-test button
+**States:** Default (editing), pristine (unchanged), dirty (unsaved changes), result-pass, result-fail
+**Accessibility:** Tab order through fields, autocomplete announced via aria-live, toggle buttons with aria-pressed
+
+#### SentenceView
+
+**Purpose:** Universal sentence rendering for test cases across all contexts — the single most reused custom component.
+**Content:** "Can `user:alice` `view` `document:budget` ?" with technical tokens in background pills (`bg-gray-100 rounded px-1` in light context, adapted for dark theme)
+**Variants by `result` prop:**
+- `null` (editing): "Can X do Y to Z? → Yes" (neutral)
+- `pass`: "Can X do Y to Z? → Yes ✓" (green)
+- `fail`: "Can X do Y to Z? → Expected: Yes, Got: No" (red highlight on mismatch)
+- `running`: "Can X do Y to Z? → ..." (amber spinner)
+**Used in:** Tree node labels, form preview, results view, failure detail, import preview
+**Accessibility:** Sentence is a single readable text node for screen readers; pills are decorative only
+
+#### RunPhaseTimeline
+
+**Purpose:** Vertical timeline showing execution phases with live status.
+**Reuses:** `LoadingSpinner`
+**Content:** 4 phases — Provisioning, Loading fixtures, Running checks (with progress counter N/M), Cleanup. Each phase shows: status icon (spinner/check/cross), label, elapsed timer.
+**States per phase:** Pending (gray dash), running (amber spinner + ticking elapsed timer), completed (green check + final duration), failed (red cross + error message expandable)
+**Accessibility:** List role, each phase has aria-label with status ("Provisioning: completed, 1.2 seconds")
+
+#### RunSummaryBadge
+
+**Purpose:** Composite badge showing pass/fail counts — always visible in editor header.
+**Reuses:** `AppBadge` as styling base
+**Content:** "8/10 passed" with icon (check or cross) and background color (green-50 or red-50)
+**States:** All passed (green), has failures (red), running (amber with spinner), no runs (gray "Never run")
+**Accessibility:** aria-label with full description ("8 of 10 tests passed")
+
+#### JsonEditor
+
+**Purpose:** CodeMirror 6 wrapper with Tailwind-compatible theme for JSON editing.
+**Content:** Full JSON representation of the suite definition with syntax highlighting, bracket matching, validation
+**Actions:** Edit JSON directly, changes sync to form view (JSON is source of truth)
+**States:** Synced (green indicator), has-errors (red lint markers), read-only (for import preview)
+**Integration:** `EditorView.theme()` API with hex values from existing CSS custom properties (`--color-success`, `--color-error`, etc.). Single theme file, one mapping.
+
+#### ImportPreview
+
+**Purpose:** Import validation and preview using CodeMirror with Zod lintGutter.
+**Reuses:** `JsonEditor`, `FileImportDropzone`
+**Content:** Uploaded JSON in CodeMirror editor with inline error markers, summary of what will be created ("3 groups, 12 tests, fixture with 5 tuples")
+**Actions:** Edit in-place to fix errors, confirm import, cancel
+**States:** Validating (spinner), valid (green summary + confirm button), invalid (red lint markers with actionable messages mapped to line numbers)
+**Accessibility:** Error count announced via aria-live, lint markers navigable via keyboard
 
 ### Component Implementation Strategy
 
-**Wrapper pattern:** Custom components wrap Headless UI primitives for interaction + Tailwind for styling + business logic. We don't test that a dialog traps focus (Headless UI guarantees that) — we test our business logic: does the confirm callback fire? Does the toast appear?
+**Color tokens:** All components reference existing CSS custom properties (`--color-success`, `--color-error`, `--color-warning`, `--color-info`) from `main.css`, not raw Tailwind color classes. This ensures consistency with the existing dark theme.
 
-**Shared patterns across all components:**
-- Loading states use `LoadingSpinner` inline
-- Error feedback via `ToastContainer` (not inline errors for async operations)
-- Destructive actions route through `ConfirmDialog`
-- All interactive elements have visible focus rings (`ring-2 ring-info`)
-- Type identifiers always rendered via `TypeBadge` for consistent coloring
-- No component has its own CSS file — everything is inline Tailwind
+**Composition pattern:** Custom components compose existing base components rather than reimplementing. `SuiteCard` wraps `AppCard` + `AppBadge` + `Menu`. `TestCaseForm` wraps `SearchableSelect` + `AppInput`. No duplication of base component behavior.
+
+**State management:** Components that need live updates during runs (`SuiteTree`, `SuiteTreeCollapsed`, `RunPhaseTimeline`, `RunSummaryBadge`, `SentenceView`) are reactive to Pinia stores (`suites`, `runs`). No component-local polling — the store handles polling, components react.
+
+**Editor state persistence:** Tree selection, scroll position, form/JSON mode, and collapsed/expanded tree state are stored in the `suites` Pinia store, not in component-local state. This ensures state survives navigation away and back.
 
 ### Implementation Roadmap
 
-**Phase 1 — App Shell (blocks everything):**
-- `AppButton`, `AppInput`, `AppSelect`, `SearchableSelect`, `AppTabs`, `AppCard`, `TypeBadge`
-- `AppHeader` (layout) + `ConnectionBadge` + `AppSidebar` (layout)
-- `ToastContainer`, `LoadingSpinner`, `EmptyState`
-- `ConfirmDialog`
+**Phase 1 — Core (needed for first working flow):**
+- `SuiteCard` + `EmptyState` integration → Suite List view
+- `SuiteTree` + `TestCaseForm` + `SentenceView` → Suite Editor view
+- `JsonEditor` → Dual-mode editor
 
-**Phase 2 — Core Views (enables Journey 1: first connection + model viewing):**
-- `ModelDslView` (Shiki integration)
-- `ModelGraphView` (Vue Flow + dagre, custom type nodes using `TypeBadge` colors)
-- `StoreCard` (store list)
-- `ConnectionPopover` (runtime URL edit)
+**Phase 2 — Execution (needed for run experience):**
+- `RunPhaseTimeline` + `RunSummaryBadge` → Run feedback
+- `SuiteTreeCollapsed` → Collapsible tree
+- `SentenceView` result variants (pass/fail) → Results rendering
 
-**Phase 3 — Data & Query (enables Journey 2: debugging permissions):**
-- `TupleTable` (TanStack Table integration, `TypeBadge` in cells)
-- `AddTupleForm`
-- `CheckQuery` + `WhyButton` + `ResolutionPath`
-- `ListObjectsQuery`, `ListUsersQuery`, `ExpandQuery`
-
-**Phase 4 — Graph & Admin (enables Journey 2-3: investigation + administration):**
-- `RelationshipGraphCanvas` (Vue Flow + dagre, entity nodes)
-- `GraphNodeDetail` (inspector panel overlay)
-- `FileImportDropzone`
-- Export functionality (download trigger, no special component)
+**Phase 3 — Management (needed for full workflow):**
+- `ImportPreview` → Import flow with validation
+- Context menu actions (Export, CI Integration snippet) → Suite management
+- `GuidedQuickStart` content in `EmptyState` → First-time onboarding
 
 ## UX Consistency Patterns
 
 ### Button Hierarchy
 
-| Level | Component | Usage | Example |
-|---|---|---|---|
-| **Primary** | `AppButton` primary | One primary action per context. The main thing the user should do. | "Check", "Add Tuple", "Create Store", "Import" |
-| **Secondary** | `AppButton` secondary | Supporting actions, alternatives | "Cancel", "Copy", "Previous/Next" |
-| **Danger** | `AppButton` danger | Destructive actions. Always paired with ConfirmDialog. | "Delete Store", "Delete Selected" |
-| **Text/Link** | `WhyButton`, text links | Inline actions that expand or navigate | "Why?", "Go to Import/Export" |
+**Primary action (one per view):**
+- Suite List: "New Suite" — `AppButton variant="primary"`
+- Editor: "Run Suite" / "Run" — `AppButton variant="primary"` with `loading` prop during execution
+- Import Preview: "Import" — `AppButton variant="primary"`, disabled until validation passes
 
-**Rules:**
-- Maximum 1 primary button visible per card/section
-- Danger buttons never appear alone — always with a Cancel/secondary escape
-- Button labels are verbs: "Check", "Delete", "Import" — not "OK", "Submit", "Yes"
-- Loading state replaces button text with spinner + "Checking...", "Deleting..." — button stays same width
+**Secondary actions:**
+- Run single test / Run group — ghost button with play icon, no label (icon-only in tree, labeled in editor header)
+- Form ↔ JSON toggle — `AppTabs` (not buttons). Active tab has bottom border accent, not fill.
+- Expand/collapse metadata — text link style ("Show metadata ▾"), not a button
+
+**Destructive actions:**
+- Delete suite — always behind `ConfirmDialog`. Trigger is in context menu, never a top-level button.
+- Discard unsaved changes — `ConfirmDialog` with "Discard" as destructive action label, "Keep editing" as safe default.
+
+**Button placement rule:** Primary action is always top-right of its container. Run Suite is in editor header (right-aligned, next to RunSummaryBadge). New Suite is in suite list header. Consistency: user's eye always goes to top-right for the main action.
 
 ### Feedback Patterns
 
-| Feedback Type | Mechanism | Duration | Example |
-|---|---|---|---|
-| **Mutation success** | Toast (success) | Auto-dismiss 5s | "Tuple added", "Store created", "Backup complete — 847 tuples" |
-| **Mutation error** | Toast (error) | Persist until dismissed | "Failed to add tuple: relation 'viewer' not found in model" |
-| **Query result** | Inline result area | Persists until next query | Green checkmark + "Allowed" or Red X + "Denied" |
-| **Connection status** | Header badge (persistent) | Always visible | Green "Connected" / Red "Connection Error" |
-| **Validation error** | Inline below field | Persists until corrected | "Required field" / "Invalid format: expected type:id" |
-| **Destructive warning** | ConfirmDialog | Until user decides | "Are you sure you want to delete staging-store?" |
-| **Loading** | LoadingSpinner (inline or full-view) | Until data loaded | Spinner in card, or skeleton in table |
+**Run status (4-tier progressive disclosure):**
 
-**Rules:**
-- Toasts stack vertically (bottom-right), newest on top
-- Success toasts include relevant counts/details (not just "Success")
-- Error toasts include the error message from the API, not generic "Something went wrong"
-- Never show a toast AND inline error for the same event — pick one based on context
+| Level | Component | What it shows | When visible |
+|-------|-----------|---------------|--------------|
+| 1. Suite List | `SuiteCard` badge | "8/10 passed" or "Never run" | Always |
+| 2. Editor header | `RunSummaryBadge` | "8/10 passed" + icon | Always in editor |
+| 3. Tree nodes | `SuiteTree` icons | Per-test ✓/✗/spinner/dash | Always in tree |
+| 4. Selected test | `SentenceView` result | Full sentence with Expected/Got | On test selection |
+
+**Validation feedback:**
+- Form fields: Inline error below field (red text, `text-sm`), appears on blur (not on keystroke). No error state on pristine fields.
+- JSON editor: CodeMirror `lintGutter` with red markers at error lines. Error count in editor status bar.
+- Import: Same lintGutter pattern + summary banner ("3 errors found — fix to enable import")
+
+**Toast notifications:**
+- Run complete (all passed): Success toast, auto-dismiss 4s — "Suite 'RBAC Tests' passed (10/10)"
+- Run complete (failures): Error toast, persists until dismissed — "Suite 'RBAC Tests': 2 failures"
+- Suite saved: Success toast, auto-dismiss 3s — "Suite saved"
+- Import successful: Success toast, auto-dismiss 4s — "Imported 'Billing Policies' (3 groups, 12 tests)"
+
+**Toast rules:** Use `ToastContainer`. Max 3 visible. Success auto-dismisses, errors persist. No toasts for intermediate states (running, provisioning) — those use inline phase timeline.
 
 ### Form Patterns
 
-**Input conventions:**
+**Test case form (canonical 4-field pattern):**
+1. **User** — `SearchableSelect` with autocomplete from known entities. Placeholder: "user:alice"
+2. **Relation** — `SearchableSelect`, options filtered by model if available. Placeholder: "viewer"
+3. **Object** — `SearchableSelect`. Placeholder: "document:budget"
+4. **Expected** — Toggle button (Allowed/Denied), not a checkbox. Default: Allowed. Toggle uses `aria-pressed`.
 
-| Field Type | Component | Font | Placeholder | Example |
-|---|---|---|---|---|
-| OpenFGA identifier | `AppInput` (monospace variant) | JetBrains Mono | `type:id` pattern | `user:alice`, `document:roadmap` |
-| Relation name | `AppSelect` | Inter (UI font) | "Select relation..." | `viewer`, `editor`, `owner` |
-| Store selection | `SearchableSelect` | Inter | "Select a store..." | `production-store` |
-| Free text | `AppInput` | Inter | Descriptive placeholder | "Store name", "Search..." |
+**Autocomplete behavior:**
+- Triggers on focus (not on character count threshold) — this is the "this is easy" moment
+- Options from the connected store's model and tuples
+- Free text allowed (not restricted to known entities) — users may test hypothetical scenarios
+- Selected value shown in monospace (`font-mono`) inside the input
 
-**Validation rules:**
-- Validate on blur (not on every keystroke)
-- Show validation error below the field with `aria-describedby` link
-- Don't disable submit buttons based on validation — let the user click and show errors
-- Clear validation errors when the user starts typing in the field
+**Metadata section (progressive disclosure):**
+- Collapsed by default. "Show metadata ▾" text link below the 4 fields.
+- Contains: description (textarea), tags (multi-select), severity (select: critical/warning/info)
+- Persists expand/collapse state per session in Pinia store
 
-**Form layout:**
-- Horizontal form rows for 2-3 related fields (Query Console: User + Relation + Object + Check button)
-- Vertical stacking for forms with > 3 fields
-- Submit button at the end of the row (horizontal) or bottom-right (vertical)
+**Form ↔ JSON sync:**
+- JSON is the source of truth. Form edits write to JSON model, form reads from JSON model.
+- "JSON synced ✓" indicator in form mode (green text, bottom of form). Disappears during JSON editing.
+- If JSON is manually edited with syntax errors, form shows "JSON has errors — fix in JSON tab" banner instead of form fields.
 
 ### Navigation Patterns
 
-**Sidebar navigation:**
-- Active view highlighted with blue left border + blue text
-- All other items gray-400, hover → gray-100
-- Icons always visible (collapsed mode shows only icons)
-- Sidebar state (collapsed/expanded) persisted in localStorage
+**Two-tab structure:**
+- Tab bar: "Suites" | "Editor" — sticky at top of content area
+- "Suites" shows `SuiteList`. "Editor" shows `SuiteTree` + `SuiteEditorPanel`.
+- Clicking a suite card in the list auto-navigates to Editor tab with that suite loaded.
+- Editor tab shows suite name in header as context (not a separate breadcrumb).
 
-**Cross-view navigation:**
-- State preservation: query inputs, table filters, graph viewport survive view switches
-- Each view re-fetches data on mount (data freshness pattern)
-- No browser back/forward for in-app navigation — sidebar is the primary nav
+**Tree navigation:**
+- Arrow keys navigate between tree nodes. Enter selects. Left/Right collapses/expands groups.
+- Selected node has blue highlight (consistent with existing viewer sidebar style).
+- Selection loads the corresponding content in the editor panel (test case form or group metadata).
 
-**Contextual navigation:**
-- `TypeBadge` in ResolutionPath: clickable → navigates to Relationship Graph filtered on that entity
-- `EmptyState` action buttons: navigate to the view that resolves the empty state
-- Header store selector: click → dropdown. First selection → auto-navigate to Model Viewer
+**Context menu pattern:**
+- Three-dot icon on each `SuiteCard` → Headless UI `Menu` dropdown
+- Menu items: Edit Metadata, CI Integration, Import, Export, Delete
+- Keyboard: Enter on three-dot opens menu, arrow keys navigate, Enter selects, Escape closes
+- Destructive items (Delete) are visually separated with a divider and red text
 
-### Loading & Empty States
+**Mode persistence:**
+- Form/JSON tab selection persists across navigation (stored in Pinia). No "mode amnesia."
+- Tree collapse state persists. Returning to Editor tab restores exact tree state.
 
-**Loading pattern:**
-- Initial page load: full-view `LoadingSpinner` centered in content area
-- Data refresh (re-mount): inline spinner in the card/section being refreshed
-- Action in progress: button shows spinner + "Loading..." text
-- Never show loading for < 200ms — use a debounce to avoid flash
+### Empty & Loading States
 
-**Empty states (per view):**
+**Empty suite list:**
+- `EmptyState` component with guided quick start (3 numbered steps with subtle progress indicator)
+- Steps: 1) Name your suite, 2) Import fixture, 3) Add first test case
+- Single CTA button: "Create your first suite"
+- Disappears permanently after first suite exists
 
-| View | Icon | Message | Action |
-|---|---|---|---|
-| Model Viewer | FileText | "No authorization model loaded" | "Go to Import/Export" |
-| Tuple Manager | Database | "No tuples in this store" | "Add Tuple" / "Go to Import/Export" |
-| Query Console | Search | "No model loaded — a model is required to run queries" | "Go to Model Viewer" |
-| Relationship Graph | Network | "No tuples to visualize" | "Go to Tuple Manager" |
-| Store Admin (empty instance) | Database | "No stores on this instance" | "Create Store" |
+**Empty group:**
+- Inline message within group: "No test cases yet" + "Add test case" ghost button
+- Not a full-page empty state — groups are nested, so feedback is compact
 
-### Search & Filtering Patterns
+**Loading during data fetch:**
+- Suite list: Skeleton cards (3 gray pulse rectangles matching SuiteCard shape)
+- Editor: Spinner centered in editor panel with "Loading suite..." text
+- No skeleton for tree — tree populates instantly from already-fetched suite data
 
-**Tuple Manager filters:**
-- Always visible above the table (not hidden behind a "Filter" button)
-- Three filter inputs: type, relation, user — each filters independently (AND logic)
-- Filters are monospace inputs (matching table content)
-- Clear filter: X button inside each input, or clear all button
-- Filters persist when navigating away and back
+**Run in progress:**
+- `RunPhaseTimeline` is the primary loading indicator — no separate spinner
+- Tree nodes show amber spinner on running tests
+- RunSummaryBadge shows amber state with spinner during run
+- User CAN navigate away — run continues in background, badge updates when they return
 
-**SearchableSelect (store selector, type filters):**
-- Type to filter list
-- Matching text highlighted in results
-- "No results" message when filter matches nothing
-- Esc clears search and closes dropdown
+### Modal & Overlay Patterns
 
-**Graph filtering (Relationship Graph):**
-- Filter panel above the canvas: toggle visibility by type
-- Each type shown as a `TypeBadge` with checkbox
-- Unchecking a type hides those nodes + their edges
-- Filter state resets on data refresh (intentional — data may have changed)
+**ConfirmDialog (destructive actions only):**
+- Delete suite: "Delete 'Suite Name'?" / "This will permanently delete the suite and all run history." / [Cancel] [Delete]
+- Discard changes: "Discard unsaved changes?" / "Your changes to 'Suite Name' will be lost." / [Keep editing] [Discard]
+- Safe action is always the default (left button). Destructive action is right button with red variant.
 
-### Overlay & Dialog Patterns
+**CI Integration modal:**
+- Triggered from context menu "CI Integration"
+- Content: Copyable curl snippet with suite ID pre-filled, brief polling instructions
+- Single "Copy" button + "Close" — not a form, just reference content
+- Uses `ConfirmDialog` shell (Headless UI `Dialog`) but with informational styling, not warning
 
-**Inspector panel (GraphNodeDetail):**
-- Slides in from right as 320px overlay
-- Backdrop: subtle semi-transparent, click to dismiss
-- Esc to dismiss
-- Content: node type + ID, list of relations, connected entities, "Query this entity" button
-- Only one inspector open at a time — clicking another node replaces content
-
-**ConfirmDialog:**
-- Modal with backdrop, focus trapped
-- Title in danger color for destructive actions
-- Body explains the consequence clearly
-- Two buttons: Cancel (secondary, left) + Confirm (danger, right)
-- Esc or Cancel dismisses without action
-- After confirmation: dialog closes, action executes, toast confirms result
-
-**ConnectionPopover:**
-- Opens from connection badge click
-- Positioned below badge, aligned right
-- Click-outside or Esc to dismiss
-- Does NOT block interaction with rest of header while open
+**Import flow (panel, not modal):**
+- Import is NOT a modal — it's a full editor-panel experience (replaces the editor content temporarily)
+- FileImportDropzone → CodeMirror preview with validation → confirm/cancel buttons
+- "Cancel" returns to previous editor state. "Import" creates suite and navigates to it.
+- This avoids the "modal inside modal" problem and gives proper space for JSON editing
 
 ## Responsive Design & Accessibility
 
 ### Responsive Strategy
 
-**Desktop-only.** OpenFGA Viewer is a developer tool optimized for 1280px+ viewports. No mobile or tablet layouts are designed or supported.
+**Desktop-first developer tool.** The test suite module is designed for desktop workflows (model editing, JSON authoring, CI/CD integration). Tablet gets graceful degradation; mobile gets read-only status glance.
 
-**Rationale:** The PRD explicitly scopes this as desktop-first with no mobile requirement. The tool's core interactions (graph manipulation, data tables, multi-field query forms) are fundamentally mouse/keyboard experiences. Investing in responsive layouts would add complexity with zero user value — the target audience uses desktop browsers exclusively for this type of work.
+**Desktop (≥1280px) — Full experience:**
+- Suite List: Single-column cards (`max-w-3xl`), generous `gap-4` spacing
+- Editor: Two-column — tree panel (~280px) + editor panel (remaining width)
+- Phase timeline and results render inline with comfortable spacing
+- CodeMirror editor has room for 80+ character lines without horizontal scroll
 
-**Viewport handling:**
+**Large tablet / Small desktop (1024px–1279px) — Comfortable:**
+- Suite List: Same layout, slightly tighter padding
+- Editor: Tree panel starts collapsed (icon strip). User can expand on demand.
+- Editor panel gets full width by default — more useful for JSON editing
 
-| Viewport Width | Behavior |
-|---|---|
-| ≥ 1280px | Full layout: expanded sidebar (240px) + content area |
-| ≥ 1024px, < 1280px | Collapsed sidebar (64px) auto-triggered. Content area gets more space |
-| < 1024px | Warning banner: "OpenFGA Viewer is designed for desktop browsers (1280px+). Some features may not display correctly." No layout adaptation. |
+**Tablet (768px–1023px) — Functional but simplified:**
+- Suite List: Cards stretch to full width, context menu unchanged (touch-friendly via Headless UI)
+- Editor: Tree panel hidden by default, accessible via hamburger-style toggle. Editor panel is full-width.
+- CodeMirror: Font size bumped to 15px for touch readability
+- Run controls: Buttons get minimum `h-11` (44px) touch targets
 
-**No breakpoint cascade** — the app has a single layout with one adaptation point (sidebar auto-collapse at < 1280px). No media queries beyond this.
+**Mobile (<768px) — Read-only dashboard:**
+- Suite List only: Cards with run badges, tap to see suite detail (read-only sentence list)
+- No editor, no JSON, no tree panel — these are not usable on mobile
+- Run button available (tap to trigger, poll for results) but no editing
+- Banner: "Use desktop for full editing experience"
 
 ### Breakpoint Strategy
 
-| Breakpoint | Tailwind Class | Purpose |
-|---|---|---|
-| 1280px | `xl:` | Full layout threshold. Below this, sidebar auto-collapses |
-| 1024px | `lg:` | Minimum usable width. Below this, warning banner shown |
+Tailwind default breakpoints, desktop-first approach:
 
-**No mobile or tablet breakpoints.** All design decisions assume mouse/keyboard input and ≥ 1280px viewport.
+| Breakpoint | Tailwind | Behavior |
+|------------|----------|----------|
+| ≥1280px | `xl:` | Full two-column editor, tree expanded |
+| 1024–1279px | `lg:` | Tree collapsed by default, expandable |
+| 768–1023px | `md:` | Tree hidden, toggle to show. Full-width editor |
+| <768px | Default | Suite list only, read-only mode |
+
+**No custom breakpoints needed.** Tailwind defaults align with the layout shift points.
+
+**Implementation approach:** Use `lg:` prefix for tree panel visibility. Editor panel uses `flex-1` to fill available space regardless of tree state. Suite cards use `max-w-3xl mx-auto` at all sizes (naturally responsive).
 
 ### Accessibility Strategy
 
-**Compliance target:** Pragmatic WCAG AA — not formally certified, but following AA guidelines where they improve the experience for all users. The focus is on making the tool usable for developers with visual or motor accessibility needs, not on achieving a compliance badge.
+**Target: WCAG 2.1 AA compliance.**
 
-**Already defined in previous steps (consolidated):**
+**Already covered by design decisions (Steps 8/11/12):**
+- Color + icon for all status (never color alone)
+- Contrast ratios ≥4.5:1 via Tailwind default palette on dark theme
+- Headless UI components provide keyboard navigation, focus management, ARIA attributes
+- `aria-live="polite"` for dynamic run status updates
+- `aria-expanded` on tree nodes, `aria-pressed` on toggles
+- Focus rings via Tailwind `ring` utilities
 
-| Area | Decision | Where Defined |
-|---|---|---|
-| Color contrast | Minimum 4.5:1 for all text on dark backgrounds | Visual Foundation (Step 8) |
-| Color independence | Green/red never alone — always paired with icons + text | Visual Foundation (Step 8) |
-| Focus indicators | Visible `ring-2 ring-info` on all interactive elements | Visual Foundation (Step 8) |
-| Keyboard navigation | Tabs (arrow keys), dialogs (focus trap, Esc), forms (Tab/Shift+Tab) | Component Strategy (Step 11) |
-| ARIA attributes | All components specify ARIA roles, labels, states | Component Strategy (Step 11) |
-| Font sizing | Minimum 12px, base 14px | Visual Foundation (Step 8) |
+**Additional requirements:**
 
-**Additional accessibility patterns:**
+**Keyboard navigation map:**
 
-| Pattern | Implementation |
-|---|---|
-| **Skip to content** | Hidden link before sidebar, visible on focus: "Skip to main content" → jumps to content area |
-| **Focus order** | Logical tab order: header → sidebar → content → inspector panel. No focus traps except dialogs |
-| **Screen reader landmarks** | `<header>`, `<nav>` (sidebar), `<main>` (content), `<aside>` (inspector panel) |
-| **Graph accessibility** | Graph nodes are Tab-focusable. Focused node shows tooltip with type + ID. Relationship list available as text in inspector panel (not graph-only) |
-| **Error announcements** | Toast notifications use `aria-live="polite"`. Validation errors use `aria-describedby` |
-| **Reduced motion** | Respect `prefers-reduced-motion`: disable slide animations, instant panel open/close |
+| Context | Key | Action |
+|---------|-----|--------|
+| Suite List | `Tab` | Move between suite cards |
+| Suite Card | `Enter` | Open suite in editor |
+| Suite Card | `Space` | Open context menu |
+| Tree | `↑/↓` | Navigate between nodes |
+| Tree | `←/→` | Collapse/expand group |
+| Tree | `Enter` | Select test case |
+| Editor | `Ctrl+Enter` | Run suite |
+| Editor | `Tab` | Move between form fields |
+| Form/JSON tabs | `←/→` | Switch tab |
+| Dialog | `Escape` | Close |
+
+**Screen reader announcements:**
+- Suite loaded: "Editing suite: [name], [N] groups, [M] test cases"
+- Run started: "Running suite [name]"
+- Run phase change: "Phase: [name], status: [status]"
+- Run complete: "[N] of [M] tests passed" (via `aria-live`)
+- Test result: "Test [description]: [passed/failed]"
+
+**Focus management:**
+- Opening editor: Focus moves to first form field or tree root
+- Run complete: Focus stays on Run button (no focus steal)
+- Dialog open: Focus trapped in dialog (Headless UI default)
+- Dialog close: Focus returns to trigger element
+- Import confirm: Focus moves to newly created suite card
 
 ### Testing Strategy
 
-**Browser testing (MVP):**
-
-| Browser | Version | Priority |
-|---|---|---|
-| Chrome | Last 2 major | Primary — dev team's browser |
-| Firefox | Last 2 major | Full support |
-| Edge | Last 2 major | Full support (Chromium-based) |
-| Safari | Latest | Not targeted — may work, not actively tested |
+**Responsive testing (pragmatic for solo dev):**
+- Chrome DevTools device toolbar for breakpoint verification
+- Actual test on one tablet if available (iPad Safari)
+- No dedicated mobile testing — mobile is intentionally limited
 
 **Accessibility testing:**
-- **Automated:** Run axe-core (via `@axe-core/playwright` or browser extension) on all views. Fix all critical/serious violations.
-- **Keyboard-only:** Manually verify all views are navigable with keyboard only. Every interactive element reachable via Tab, every action triggerable via Enter/Space/Esc.
-- **Screen reader:** Manual spot-check with NVDA (Windows) or Orca (Linux). Verify landmarks, ARIA labels, and query results are announced correctly.
-- **Contrast:** Verify with Chrome DevTools contrast checker. All text meets 4.5:1 on dark backgrounds.
+- `eslint-plugin-vuejs-accessibility` in CI — catches missing ARIA attributes, alt text, label associations
+- Manual keyboard-only navigation pass per epic (Tab through full flow without mouse)
+- axe DevTools browser extension for contrast and structure audits
+- No screen reader testing in CI — manual spot-check with VoiceOver or Orca per release
 
-**No mobile/tablet testing** — out of scope per PRD.
+**What NOT to test (pragmatic scope):**
+- Mobile touch gesture edge cases (not a mobile app)
+- JAWS/NVDA (Windows screen readers) — Linux dev environment, VoiceOver/Orca sufficient
+- AAA contrast compliance (AA is the target)
 
 ### Implementation Guidelines
 
-**For developers implementing this UX spec:**
+**Responsive development:**
+- Use Tailwind responsive prefixes (`lg:`, `md:`) — no custom media queries
+- Tree panel visibility: `hidden lg:block` with manual toggle override stored in Pinia
+- Touch targets: All buttons `min-h-[44px] min-w-[44px]` on `md:` and below
+- CodeMirror container: `min-h-[300px]` to prevent collapse on smaller viewports
+- No horizontal scroll — JSON lines wrap in CodeMirror (`EditorView.lineWrapping`)
 
-1. **Semantic HTML first** — Use `<button>` not `<div onClick>`, `<nav>` not `<div class="nav">`, `<main>` not `<div class="content">`. Headless UI components already produce semantic HTML.
-
-2. **Keyboard before mouse** — Every interaction must work with keyboard. If it requires a mouse click, add a keyboard equivalent. Tab, Enter, Space, Esc, Arrow keys cover 95% of cases.
-
-3. **ARIA only when HTML can't** — Don't add `role="button"` to a `<button>`. Use ARIA for custom components (graph nodes, resolution path) where native HTML semantics don't exist.
-
-4. **Test with keyboard regularly** — Unplug the mouse and navigate the app. If you get stuck, there's a bug.
-
-5. **Respect `prefers-reduced-motion`** — Wrap all CSS transitions/animations in `@media (prefers-reduced-motion: no-preference)`. Users who set reduced motion see instant state changes.
-
-6. **No viewport-based hiding** — Don't hide critical functionality at narrow widths. If the viewport is too small, show a warning but keep everything accessible via scroll.
+**Accessibility development:**
+- Semantic HTML: `<nav>` for tree, `<main>` for editor, `<section>` for suite cards, `<form>` for test case editor
+- Headless UI handles: Dialog focus trap, Menu keyboard navigation, Combobox ARIA, Tab ARIA
+- Custom components must add: `role="tree"` / `role="treeitem"` on SuiteTree, `aria-label` on icon-only buttons, `aria-live` on RunSummaryBadge and phase status
+- Skip link: "Skip to editor" link visible on focus, jumps past tree panel to editor content
+- Reduced motion: `@media (prefers-reduced-motion: reduce)` — disable phase timeline animations, replace spinners with static "..." text

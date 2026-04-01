@@ -6,6 +6,7 @@ const props = defineProps<{
   modelValue: string | null
   options: Array<{ value: string; label: string }>
   placeholder?: string
+  allowFreeText?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -28,6 +29,13 @@ function onSelect(value: string) {
   emit('update:modelValue', value)
   query.value = ''
 }
+
+function onBlur() {
+  if (props.allowFreeText && query.value.trim()) {
+    emit('update:modelValue', query.value.trim())
+    query.value = ''
+  }
+}
 </script>
 
 <template>
@@ -43,6 +51,7 @@ function onSelect(value: string) {
           'focus:outline-none focus:ring-2 focus:ring-info',
         ]"
         @change="query = $event.target.value"
+        @blur="onBlur"
       />
       <ComboboxOptions
         v-if="filteredOptions.length > 0"

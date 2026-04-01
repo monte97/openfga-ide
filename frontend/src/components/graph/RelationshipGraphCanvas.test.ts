@@ -13,6 +13,7 @@ vi.mock('@vue-flow/core', () => ({
 
 vi.mock('@vue-flow/background', () => ({
   Background: { template: '<div />' },
+  BackgroundVariant: { Dots: 'dots' },
 }))
 
 vi.mock('@vue-flow/controls', () => ({

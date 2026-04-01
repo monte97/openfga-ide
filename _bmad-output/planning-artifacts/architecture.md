@@ -2,13 +2,15 @@
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 lastStep: 8
 status: 'complete'
-completedAt: '2026-03-26'
+completedAt: '2026-03-31'
 inputDocuments:
   - '_bmad-output/planning-artifacts/prd.md'
+  - '_bmad-output/brainstorming/authorization-test-suite-management.md'
+  - '_bmad-output/planning-artifacts/ux-design-specification.md (original viewer only — context reference)'
 workflowType: 'architecture'
 project_name: 'openfga-viewer'
 user_name: 'monte'
-date: '2026-03-26'
+date: '2026-03-30'
 ---
 
 # Architecture Decision Document
@@ -20,614 +22,654 @@ _This document builds collaboratively through step-by-step discovery. Sections a
 ### Requirements Overview
 
 **Functional Requirements:**
-41 functional requirements across 7 domains. The architecture must support:
-- A backend proxy layer that mediates ALL OpenFGA communication (FR1-7, plus every data operation)
-- Two distinct graph visualization contexts: schema-level model graph (FR14-16) and instance-level relationship graph (FR28-34), both using Vue Flow/dagre
-- Full CRUD operations for stores (FR8-13) and tuples (FR18-22) with batch support
-- Four query types with visual feedback: Check, List Objects, List Users, Expand (FR23-27)
-- Self-contained import/export format for backup, restore, and sharing (FR35-38)
-- Persistent navigation context: sidebar + header with connection status and active store (FR39-41)
+45 FRs across 8 domains. The architecture must support:
+- Suite management CRUD with hierarchical data model: suites → groups → test cases (FR1-11)
+- Fixture management reusing existing export format ({ model, tuples }) (FR12-14)
+- Async execution engine with ephemeral OpenFGA store lifecycle: create → load fixture → execute checks → report → destroy (FR15-23)
+- Run results persistence with summary statistics and per-test detail (FR24-28)
+- Suite definition import/export as git-friendly JSON (FR29-32)
+- Validation pipeline: suite structure on save, fixture format before execution (FR33-35)
+- Complete REST API surface for CI/CD consumption (FR36-41)
+- PostgreSQL persistence with migrations, optional for existing viewer features (FR42-45)
 
 **Non-Functional Requirements:**
-- Performance: SPA bundle < 3s, model graph (20 types) < 2s, queries < 1s e2e, relationship graph (500 entities) < 3s, tuple table smooth with 10K rows
-- Security: API key backend-only, input validation/sanitization on backend, no credential persistence, trusted environment assumption
-- Integration: OpenFGA API v1 (HTTP REST), `@openfga/syntax-transformer` for DSL conversion, self-contained JSON export format
+17 NFRs driving architectural decisions:
+- Performance: 100 checks in <30s e2e (NFR1), polling <200ms (NFR2), editor loads 100+ tests <1s (NFR3), CRUD <50ms (NFR5), store provisioning <5s (NFR6)
+- Security: DB credentials env-only (NFR7), Zod validation on all endpoints (NFR9), unique ephemeral store names (NFR10)
+- Reliability: Guaranteed cleanup via try/finally (NFR15), graceful degradation without PostgreSQL (NFR16), results persisted before cleanup (NFR17)
+- Integration: Existing openfga-client service for store operations (NFR11), standard DATABASE_URL (NFR12), existing export format for fixtures (NFR14)
 
 **Scale & Complexity:**
-- Primary domain: Full-stack web (Vue 3 SPA + Express/TypeScript)
-- Complexity level: Low
-- Estimated architectural components: ~10 (connection service, store service, model service, tuple service, query service, import/export service on backend; corresponding Vue views/composables + 2 graph renderers on frontend)
+- Primary domain: Full-stack web (Vue 3 SPA + Fastify backend)
+- Complexity level: Medium — introduces persistence layer, async execution engine, and state machine to previously stateless architecture
+- Estimated architectural components: ~12 (suite service, execution engine, run service, fixture validator, PostgreSQL pool + migrations, suite API routes, run API routes, suite store, run store, suite editor components, results components, import/export handlers)
 
 ### Technical Constraints & Dependencies
 
-- Vue 3 + Composition API, Vite, Vue Router, Pinia (mandated by PRD)
-- Express + TypeScript backend proxy (mandated by PRD)
-- npm workspaces monorepo with `frontend/` and `backend/` packages
-- Docker Compose for local dev
-- `@openfga/syntax-transformer` — pinned version, validated at startup
-- Vue Flow for graph visualization (both model and relationship graphs)
-- Desktop-first (1280px+), no mobile layout, no SSR, no PWA, no i18n
-- Proprietary license — no Apache 2.0 dependencies that would force copyleft
+- **Existing codebase:** 6 epics already implemented — Vue 3 + Composition API, Vite, Vue Router, Pinia, Fastify backend, npm workspaces monorepo
+- **Fastify backend** (not Express) — existing codebase uses Fastify, contradicting original architecture doc which said Express. Must align with what's actually deployed
+- **Module isolation:** Test suite code must be isolated in its own directory. Depends on existing connection/store infrastructure but must not modify it
+- **PostgreSQL optional:** App must start and serve all existing viewer features when PostgreSQL is unavailable. Test suite features show "database not configured"
+- **No ORM in MVP:** Raw SQL or lightweight query builder (Kysely or Drizzle)
+- **Fixture format:** Reuses existing export format ({ model, tuples }) — zero new format
+- **Desktop-first:** 1280px+, no mobile/tablet
+- **No real-time push in MVP:** UI polls run status via REST
+- **Zod v4.3.x:** Runtime schema validation, consistent with existing patterns
 
 ### Cross-Cutting Concerns Identified
 
-- **Connection state management** — active connection URL, auth status, and selected store must be accessible across all views (header badge, API calls, store context)
-- **Error handling pipeline** — OpenFGA API errors must be caught by backend, translated to meaningful messages, and displayed consistently in frontend (toast/alert pattern)
-- **Graph rendering performance** — Vue Flow + dagre layout used in two views with different data scales; shared performance strategies (viewport culling, lazy rendering) needed
-- **Store context propagation** — selected store ID is a prerequisite for all data operations; views must react to store changes and handle "no store selected" state
+- **PostgreSQL availability detection** — at startup, test if DB is reachable. If not, disable test suite routes gracefully while keeping viewer routes active
+- **Ephemeral store cleanup guarantee** — every code path that creates an ephemeral store must guarantee destruction via try/finally, even on network errors or process interruption
+- **Error type distinction** — execution errors (infra failures, OpenFGA unreachable, fixture rejected) vs assertion failures (expected ≠ actual) must be clearly separated in run results (FR23)
+- **Existing feature isolation** — PostgreSQL dependency must not leak into existing viewer features. No import of test-suite modules from viewer code
+- **Connection reuse** — execution engine reuses the existing openfga-client service and active connection for ephemeral store operations
+- **API consistency** — new /api/suites/* and /api/runs/* endpoints follow existing error envelope pattern ({ error, details? }) and Zod validation middleware
 
 ## Starter Template Evaluation
 
 ### Primary Technology Domain
 
-Full-stack web application (Vue 3 SPA + Express/TypeScript backend proxy), based on PRD-mandated technology choices.
+Full-stack web application (Vue 3 SPA + Express backend), brownfield extension of existing 6-epic codebase.
 
-### Starter Options Considered
+### Starter Evaluation: Not Applicable (Brownfield)
 
-| Option | Pros | Cons |
-|---|---|---|
-| Manual npm workspaces + create-vue | Full control, no unnecessary deps, latest Vite 8, official Vue tooling | Requires manual backend scaffolding (~15 files) |
-| biggestcookie/vue-express-template | Pre-built monorepo structure, shared TS interfaces | Bundles Sequelize (unneeded), git submodules, lower maintenance |
-| Nx/Turborepo wrappers | Build caching, task orchestration | Massive overhead for 2-package solo-dev project |
+This is a brownfield project with an established technology stack. No starter template evaluation needed. The new test suite feature extends the existing codebase.
 
-### Selected Starter: Manual npm Workspaces + create-vue
+### Existing Technology Stack (Verified from Codebase)
 
-**Rationale for Selection:**
-- `create-vue` is the official Vue scaffolding tool, always aligned with latest Vue/Vite versions
-- npm workspaces is the simplest monorepo approach — no extra tooling, first-party Node support
-- The Express backend is a thin proxy with no ORM/database — hand-rolling it is trivial and avoids unwanted dependencies
-- Full control over project structure means no fighting against template opinions
+**Frontend:** Vue 3 + Composition API, Vite, Vue Router, Pinia, Tailwind CSS v4.2, TanStack Table, Vue Flow, Headless UI, Shiki (syntax highlighting), Vitest
+**Backend:** Express 5.1 + TypeScript, Zod v4.3.x, Pino (structured logging), @openfga/syntax-transformer
+**Monorepo:** npm workspaces (frontend/ + backend/)
+**Dev Environment:** Docker Compose (frontend + backend + OpenFGA), Vite proxy for /api/*
+**Production:** Single multi-stage Dockerfile, Express serves SPA static files
 
-**Initialization Command:**
+**Note:** The PRD references "Fastify backend" but the actual codebase uses Express 5.1. This architecture document aligns with the implemented reality (Express).
 
-```bash
-# Root monorepo setup
-mkdir openfga-viewer && cd openfga-viewer
-npm init -y
-# Set workspaces in root package.json: "workspaces": ["frontend", "backend"]
+### New Dependencies Required for Test Suite Feature
 
-# Frontend scaffold
-npm create vue@latest frontend -- --typescript --router --pinia --vitest --eslint-with-prettier
-
-# Backend scaffold (manual)
-mkdir -p backend/src && cd backend && npm init -y
-# Add Express, TypeScript, @openfga/syntax-transformer dependencies
-```
-
-**Architectural Decisions Provided by Starter:**
-
-**Language & Runtime:**
-TypeScript across both packages. `create-vue` configures `tsconfig.json` with Vue-specific paths and strict mode. Backend uses `tsx` or `ts-node` for development.
-
-**Styling Solution:**
-Not provided by starter — to be decided in architectural decisions step. PRD does not mandate a CSS framework.
-
-**Build Tooling:**
-Vite 8 (Rolldown-based bundler) for frontend. `tsc` for backend compilation. npm workspaces for dependency management.
-
-**Testing Framework:**
-Vitest for unit tests (frontend, included by create-vue). Backend testing framework to be decided.
-
-**Code Organization:**
-- `frontend/` — Vue 3 SPA (src/views, src/components, src/stores, src/router)
-- `backend/` — Express proxy (src/routes, src/services, src/middleware)
-- Root — shared scripts, Docker Compose, workspace config
-
-**Development Experience:**
-Vite HMR for frontend, `tsx --watch` for backend, Docker Compose for full-stack local dev.
-
-**Note:** Project initialization using this approach should be the first implementation story.
+- **PostgreSQL client:** pg + @types/pg (connection pooling via pg.Pool)
+- **Migration tool:** node-pg-migrate (SQL-native, up/down migrations)
+- **JSON editor:** CodeMirror 6 (frontend, ~200KB, modular JSON mode)
+- No new frontend framework dependencies beyond CodeMirror
 
 ## Core Architectural Decisions
 
 ### Decision Priority Analysis
 
 **Critical Decisions (Block Implementation):**
-- Thin passthrough API pattern (frontend → backend → OpenFGA)
-- Same-origin deployment (Express serves SPA static files)
-- Zod for request/response validation
-- Tailwind CSS v4.2 for styling
-- TanStack Table v8 for data tables
+- PostgreSQL via pg + raw SQL with isolated query layer (repository pattern)
+- node-pg-migrate for schema migrations
+- Fire-and-forget execution with polling for run status
+- JSON as source of truth for dual-mode suite editor
+- CodeMirror 6 for JSON editing
 
 **Important Decisions (Shape Architecture):**
-- Pino for structured logging (OpenTelemetry-ready via pino-opentelemetry-transport)
-- Single multi-stage Docker image for production
-- Consistent error envelope ({ error, details? }) across all API responses
+- Auto-migrate on startup in dev, explicit CLI in production
+- PostgreSQL added to Docker Compose with named volume + health check
+- Repository pattern isolates SQL for future query builder migration
 
 **Deferred Decisions (Post-MVP):**
-- OpenTelemetry full integration (Phase 2/3)
-- OIDC / mTLS authentication (Phase 3)
-- WebSocket/SSE for real-time updates (Phase 2)
+- Background job queue for concurrent test runs (MVP is sequential)
+- SSE/WebSocket for real-time execution progress (MVP uses polling)
+- Run result retention/archival policy
 
 ### Data Architecture
 
-No database — backend is a stateless proxy to OpenFGA.
+| Decision | Choice | Rationale |
+|---|---|---|
+| PostgreSQL client | pg (node-postgres) | Battle-tested, pg.Pool for connection pooling, natural fit with Express patterns |
+| Query approach | Raw SQL via pg, isolated in repository layer | Full control for 3-4 tables; repository pattern enables future migration to Kysely/Drizzle without touching services |
+| Migration tool | node-pg-migrate | SQL-native, explicit up/down migrations, no ORM coupling — matches the "no magic" philosophy |
+| Connection config | DATABASE_URL env var, pg.Pool | Standard PostgreSQL connection string, pool managed at app level |
 
-| Decision | Choice | Version | Rationale |
-|---|---|---|---|
-| Data validation | Zod | v4.3.x | Runtime schema validation with TypeScript inference; shared schemas between frontend/backend |
-| Data persistence | None | N/A | Stateless proxy — all data lives in OpenFGA |
-| Caching | None in MVP | N/A | Queries are real-time against OpenFGA; caching would risk stale permission data |
+**Repository Pattern:**
+Each domain entity (suites, runs, run_results) gets a repository module that encapsulates all SQL. Services call repositories, never pg directly. This boundary enables swapping the query layer later without changing service logic.
 
 ### Authentication & Security
 
-| Decision | Choice | Rationale |
-|---|---|---|
-| API authentication | Pre-shared key (env var) | Backend-only, never exposed to frontend. Read from `OPENFGA_API_KEY` on startup |
-| User authentication | None in MVP | Trusted environment assumption (local dev, internal network) |
-| CORS policy | Same-origin (no CORS needed) | Express serves SPA static files in production; Vite proxy in dev |
-| Input sanitization | Zod validation on all backend routes | Validates before forwarding to OpenFGA |
+No new decisions — existing patterns carry forward:
+- Trusted environment assumption (no per-user auth)
+- Zod validation on all new endpoints
+- DB credentials via DATABASE_URL env var only, never exposed to frontend or logged
 
 ### API & Communication Patterns
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| API pattern | Thin passthrough proxy | Mirrors OpenFGA REST API structure under `/api/*`. Backend adds: auth injection, Zod validation, DSL conversion, error translation |
-| Error handling | Consistent envelope `{ error: string, details?: any }` | Backend catches OpenFGA errors, wraps in envelope. Frontend `useApi` composable handles envelope + toast notifications |
-| API prefix | `/api/` | All backend routes under `/api/*`, static SPA files served from root |
+| Execution model | Fire-and-forget with polling | POST /suites/:id/run returns 202 + runId immediately; execution runs in detached async function; client polls GET /runs/:runId. Matches PRD state machine and CI/CD journey (J5/J6) |
+| New route namespaces | /api/suites/* (CRUD), /api/runs/* (status/results) | Consistent with existing /api/* patterns |
+| Error handling | Same envelope { error, details? } | Extends existing pattern to new endpoints |
+| Run state transitions | pending → provisioning → running → completed/failed → cleanup | Persisted in PostgreSQL, queryable via GET /runs/:runId |
+
+**Execution Flow:**
+1. `POST /api/suites/:id/run` → create run record (status: pending), return 202 + `{ runId }`
+2. Detached async: update status → provisioning → create ephemeral store → load fixture
+3. Update status → running → execute checks sequentially → persist results
+4. Update status → completed/failed → cleanup (destroy ephemeral store) → update status → done
+5. Client polls `GET /api/runs/:runId` for status + results
 
 ### Frontend Architecture
 
-| Decision | Choice | Version | Rationale |
-|---|---|---|---|
-| Styling | Tailwind CSS | v4.2.x | Utility-first, fast iteration for desktop-first tooling UI. No component library overhead |
-| Data table | TanStack Table | v8.x | Headless — works with Tailwind, handles pagination/filtering/selection for 10K+ rows |
-| Graph rendering | Vue Flow | latest | Mandated by PRD for both model graph and relationship graph. Dagre layout |
-| State management | Pinia | latest | Mandated by PRD. Stores for: connection, active store, model, tuples, query results |
-| Notifications | Toast composable | custom | Lightweight toast system for success/error feedback. No external library needed |
+| Decision | Choice | Rationale |
+|---|---|---|
+| Suite editor state model | JSON as source of truth | Both form and JSON views are projections of the same Pinia store object. Lossless switching by design |
+| JSON editor | CodeMirror 6 | ~200KB, modular, good JSON mode. Sufficient for suite definition editing without Monaco's 2MB overhead |
+| State management | Pinia stores for suites, runs | Consistent with existing stores pattern (setup syntax, loading/error/data refs) |
+| Polling | setInterval in Pinia store action | Poll GET /runs/:runId while status is not terminal. Clear interval on completed/failed or component unmount |
 
 ### Infrastructure & Deployment
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Production image | Single multi-stage Dockerfile | Builds frontend (Vite), copies static assets into Express, one image to deploy |
-| Dev environment | Docker Compose | Frontend (Vite dev server) + Backend (tsx --watch) + OpenFGA instance |
-| Dev proxy | Vite proxy | Frontend dev server proxies `/api/*` to Express backend — no CORS in dev |
-| Environment config | dotenv (.env) + standard env vars | `OPENFGA_URL`, `OPENFGA_API_KEY`, `OPENFGA_STORE_ID`, `PORT` |
-| Logging | Pino | Structured JSON logging, OpenTelemetry-ready via `pino-opentelemetry-transport` for future OTel integration |
-| Monitoring | None in MVP | Deferred — Pino + OTel transport provides the foundation |
+| PostgreSQL in Docker Compose | New service with named volume + health check | Data persists across restarts, backend waits for readiness |
+| Migration execution | Auto on startup (dev) + explicit CLI (prod/CI) | Dev convenience with `npm run migrate` available for controlled environments |
+| Graceful degradation | Startup DB check; if unavailable, skip migration, disable test suite routes | FR45: existing viewer features unaffected |
 
 ### Decision Impact Analysis
 
 **Implementation Sequence:**
-1. Monorepo scaffolding (npm workspaces, create-vue, Express setup)
-2. Backend proxy core (Express + Pino + Zod + OpenFGA connection)
-3. Frontend shell (Vue Router, Pinia stores, Tailwind, layout/header/sidebar)
-4. Feature modules (model viewer, tuple manager, query console, graphs, import/export, store admin)
+1. Add PostgreSQL to Docker Compose + pg dependency + connection pool setup
+2. Set up node-pg-migrate + initial schema migration (suites, runs, run_results tables)
+3. Repository layer (suite-repository, run-repository)
+4. Suite CRUD API routes + service layer
+5. Execution engine (fire-and-forget, state machine, ephemeral store lifecycle)
+6. Run status/results API routes
+7. Frontend: suite list + suite editor (form + CodeMirror JSON view)
+8. Frontend: run execution + polling + results display
+9. Import/export suite definitions
 
 **Cross-Component Dependencies:**
-- Zod schemas shared between backend validation and frontend type safety
-- Pinia connection store drives both header badge and all API calls
-- Vue Flow shared between Model Viewer and Relationship Graph (different data models, same renderer)
-- Error envelope pattern used consistently by all backend routes and consumed by frontend `useApi`
+- Repository layer depends on pg.Pool (initialized at startup)
+- Execution engine depends on repository layer (persist state) + existing openfga-client (ephemeral store ops)
+- Suite API routes depend on repository layer + validation schemas
+- Run API routes depend on repository layer + execution engine
+- Frontend suite store depends on suite API
+- Frontend run store depends on run API + polling logic
 
 ## Implementation Patterns & Consistency Rules
 
 ### Pattern Categories Defined
 
-**Critical Conflict Points Identified:** 6 areas where AI agents could make different choices — all resolved below.
+**Critical Conflict Points Identified:** 5 areas where AI agents could make different choices — all resolved below.
 
 ### Naming Patterns
 
-**API Naming Conventions:**
-- Endpoints: plural, kebab-case → `/api/stores`, `/api/stores/:storeId/tuples`, `/api/stores/:storeId/query/check`
-- JSON fields: camelCase → `{ storeId, createdAt, authorizationModelId }`
-- Query parameters: camelCase → `?pageSize=50&continuationToken=abc`
-- Route parameters: camelCase → `:storeId`, `:tupleKey`
+**Database Naming (PostgreSQL):**
+- Tables: snake_case, plural → `suites`, `runs`, `run_results`
+- Columns: snake_case → `suite_id`, `created_at`, `expected_result`
+- Primary keys: `id` (UUID)
+- Foreign keys: `<entity>_id` → `suite_id`, `run_id`
+- Indexes: `idx_<table>_<columns>` → `idx_runs_suite_id`
+- Enums: snake_case values → `'pending'`, `'provisioning'`, `'running'`, `'completed'`, `'failed'`
 
-**Code Naming Conventions:**
-- Vue components: PascalCase files → `ModelViewer.vue`, `TupleTable.vue`
-- Vue composables: camelCase with `use` prefix → `useApi.ts`, `useToast.ts`
-- Pinia stores: `use...Store` pattern → `useConnectionStore`, `useModelStore`
-- Backend files: kebab-case → `store-routes.ts`, `tuple-service.ts`, `error-handler.ts`
-- TypeScript types/interfaces: PascalCase → `StoreInfo`, `TupleEntry`, `CheckQueryResult`
-- Constants: UPPER_SNAKE_CASE → `DEFAULT_PAGE_SIZE`, `API_PREFIX`
+**API Naming (consistent with existing codebase):**
+- Endpoints: plural, kebab-case → `/api/suites`, `/api/suites/:suiteId/run`, `/api/runs/:runId`
+- JSON fields: camelCase → `{ suiteId, createdAt, expectedResult }`
+- Query parameters: camelCase → `?status=completed`
+
+**Code Naming (consistent with existing codebase):**
+- Backend files: kebab-case → `suite-service.ts`, `run-repository.ts`, `execution-engine.ts`
+- Frontend Vue components: PascalCase → `SuiteEditor.vue`, `RunResults.vue`
+- Frontend stores: camelCase → `suites.ts`, `runs.ts`
+- Pinia stores: `use...Store` → `useSuiteStore`, `useRunStore`
+- TypeScript types: PascalCase → `SuiteDefinition`, `RunStatus`, `TestCaseResult`
+- Constants: UPPER_SNAKE_CASE → `RUN_POLL_INTERVAL_MS`, `MAX_EPHEMERAL_STORE_RETRIES`
+
+**Repository ↔ JS mapping:**
+Repositories handle snake_case → camelCase conversion at the boundary. Services and routes only see camelCase objects.
 
 ### Structure Patterns
 
-**Frontend Organization (hybrid: top-level by type, components grouped by feature):**
+**Backend — Dedicated subdirectory for test suite module:**
+
+```
+backend/src/test-suites/
+  routes/
+    suites.ts              # CRUD /api/suites/*
+    runs.ts                # /api/runs/*
+  services/
+    suite-service.ts       # Suite CRUD business logic
+    execution-engine.ts    # Fire-and-forget run orchestration
+    run-service.ts         # Run status/results queries
+  repositories/
+    suite-repository.ts    # SQL for suites table
+    run-repository.ts      # SQL for runs + run_results tables
+  schemas/
+    suite.ts               # Zod schemas for suite API validation
+    run.ts                 # Zod schemas for run API validation
+  types/
+    suite.ts               # SuiteDefinition, TestCase, TestGroup, etc.
+    run.ts                 # RunStatus, RunResult, RunSummary, etc.
+  db/
+    pool.ts                # pg.Pool initialization, availability check
+    migrate.ts             # node-pg-migrate runner (startup + CLI)
+  migrations/
+    001_create-suites.sql
+    002_create-runs.sql
+    003_create-run-results.sql
+```
+
+**Frontend — test-suites feature directory:**
 
 ```
 frontend/src/
-  views/                    # one per route
-    ModelViewer.vue
-    TupleManager.vue
-    QueryConsole.vue
-    RelationshipGraph.vue
-    StoreAdmin.vue
-    ImportExport.vue
-  components/               # grouped by feature when >1 component
-    layout/
-      AppHeader.vue
-      AppSidebar.vue
-    model/
-      ModelDslView.vue
-      ModelGraphView.vue
-    tuples/
-      TupleTable.vue
-      TupleForm.vue
-    query/
-      CheckQuery.vue
-      ListObjectsQuery.vue
-      ListUsersQuery.vue
-      ExpandQuery.vue
-    graph/
-      RelationshipGraphCanvas.vue
-      GraphNodeDetail.vue
-    common/
-      ToastContainer.vue
-      ConnectionBadge.vue
-      ConfirmDialog.vue
   stores/
-    connection.ts
-    model.ts
-    tuples.ts
-    queries.ts
-    stores.ts
-  composables/
-    useApi.ts
-    useToast.ts
-  router/
-    index.ts
-  types/
-    openfga.ts
-    api.ts
+    suites.ts              # Suite CRUD + list state
+    runs.ts                # Run polling + results state
+  views/
+    TestSuites.vue         # Suite list page
+    SuiteEditor.vue        # Suite editor page (form + JSON tabs)
+    RunResults.vue         # Run results page
+  components/
+    test-suites/
+      SuiteList.vue
+      SuiteForm.vue        # Form-based test case editor
+      SuiteJsonEditor.vue  # CodeMirror 6 JSON editor
+      FixtureEditor.vue    # Fixture (model + tuples) editor
+      RunSummary.vue       # Pass/fail summary bar
+      TestResultRow.vue    # Per-test result with definition
+      RunStatusBadge.vue   # Status badge (pending/running/completed/failed)
 ```
 
-**Backend Organization:**
-
-```
-backend/src/
-  routes/                   # one file per domain
-    stores.ts
-    model.ts
-    tuples.ts
-    queries.ts
-    import-export.ts
-    connection.ts
-  services/                 # OpenFGA API interaction logic
-    openfga-client.ts
-    model-service.ts
-    tuple-service.ts
-    query-service.ts
-    store-service.ts
-    import-export-service.ts
-  middleware/
-    error-handler.ts
-    validate.ts
-  schemas/                  # Zod schemas
-    store.ts
-    tuple.ts
-    query.ts
-    import-export.ts
-  types/
-    openfga.ts
-    api.ts
-  app.ts                    # Express app setup
-  server.ts                 # Entry point
-```
-
-**Test Location:** Co-located — `ModelViewer.test.ts` next to `ModelViewer.vue`, `tuple-service.test.ts` next to `tuple-service.ts`
+**Test Location:** Co-located — `suite-service.test.ts` next to `suite-service.ts` (consistent with existing codebase)
 
 ### Format Patterns
 
-**API Response Formats:**
+**API Response Formats (consistent with existing):**
 
-Success responses return data directly:
+Success: return data directly
 ```json
-{ "stores": [...], "continuationToken": "abc" }
+{ "suites": [...] }
+{ "runId": "uuid", "status": "pending" }
 ```
 
-Error responses use consistent envelope:
+Error: existing envelope
 ```json
-{ "error": "Store not found", "details": { "storeId": "abc123" } }
+{ "error": "Suite not found", "details": { "suiteId": "abc" } }
 ```
 
-HTTP status codes: 200 (success), 201 (created), 400 (validation error), 404 (not found), 500 (OpenFGA/server error)
+HTTP status codes: 200 (success), 201 (created), 202 (run accepted), 400 (validation), 404 (not found), 500 (server error)
 
-**Date Format:** ISO 8601 strings throughout → `"2026-03-26T10:30:00Z"`
+**Run status response:**
+```json
+{
+  "runId": "uuid",
+  "suiteId": "uuid",
+  "status": "completed",
+  "startedAt": "2026-03-30T10:00:00Z",
+  "completedAt": "2026-03-30T10:00:12Z",
+  "summary": { "total": 23, "passed": 21, "failed": 2, "errored": 0 },
+  "results": [
+    {
+      "testCase": { "user": "user:alice", "relation": "viewer", "object": "doc:roadmap", "expected": true },
+      "actual": true,
+      "passed": true,
+      "durationMs": 12,
+      "error": null
+    }
+  ]
+}
+```
+
+**Date format:** ISO 8601 strings throughout → `"2026-03-30T10:00:00Z"`
 
 ### Communication Patterns
 
-**Pinia Store Pattern:**
+**Pinia Store Pattern (consistent with existing):**
 
-Each store follows the same structure:
 ```typescript
-export const useExampleStore = defineStore('example', () => {
+export const useSuiteStore = defineStore('suites', () => {
+  const api = useApi()
   const loading = ref(false)
   const error = ref<string | null>(null)
-  const data = ref<T | null>(null)
+  const suites = ref<SuiteListItem[]>([])
 
-  async function fetchData() {
+  async function fetchSuites() {
     loading.value = true
     error.value = null
     try {
-      data.value = await api.get('/api/...')
-    } catch (e) {
+      const data = await api.get('/api/suites')
+      suites.value = data.suites
+    } catch (e: any) {
       error.value = e.message
     } finally {
       loading.value = false
     }
   }
 
-  return { loading, error, data, fetchData }
+  return { loading, error, suites, fetchSuites }
 })
 ```
 
-**Frontend API Composable Pattern:**
+**Polling Pattern (new for run status):**
 
-All API calls go through `useApi` composable:
-- Prepends `/api/` prefix
-- Parses error envelope → triggers toast on error
-- Returns typed data on success
-- Handles network errors uniformly
+```typescript
+const pollInterval = ref<ReturnType<typeof setInterval> | null>(null)
+
+function startPolling(runId: string) {
+  pollInterval.value = setInterval(async () => {
+    const run = await api.get(`/api/runs/${runId}`)
+    currentRun.value = run
+    if (['completed', 'failed'].includes(run.status)) {
+      stopPolling()
+    }
+  }, 2000)
+}
+
+function stopPolling() {
+  if (pollInterval.value) {
+    clearInterval(pollInterval.value)
+    pollInterval.value = null
+  }
+}
+```
+
+Polling cleans up on component unmount via `onUnmounted(stopPolling)`.
+
+**Repository Pattern (new):**
+
+```typescript
+// suite-repository.ts
+import { pool } from '../db/pool.js'
+import type { SuiteDefinition } from '../types/suite.js'
+
+export async function findAll(): Promise<SuiteListItem[]> {
+  const { rows } = await pool.query(
+    'SELECT id, name, description, tags, created_at, updated_at FROM suites ORDER BY updated_at DESC'
+  )
+  return rows.map(mapRowToSuiteListItem)
+}
+
+function mapRowToSuiteListItem(row: any): SuiteListItem {
+  return {
+    id: row.id,
+    name: row.name,
+    description: row.description,
+    tags: row.tags,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  }
+}
+```
 
 ### Process Patterns
 
-**Error Handling Flow:**
-1. OpenFGA returns error → backend catches in route try/catch
-2. Backend logs with Pino (includes request context)
-3. Backend responds with `{ error, details? }` envelope + appropriate HTTP status
-4. Frontend `useApi` detects error envelope → triggers toast notification
-5. Pinia store sets `error` ref → view can show inline error if needed
+**Execution Engine State Machine:**
 
-**Loading State Pattern:**
-- Each Pinia store manages its own `loading` boolean
-- Views bind to store `loading` to show spinners/skeletons
-- No global loading state — each feature is independent
+```typescript
+// execution-engine.ts
+export async function executeRun(runId: string, suite: SuiteDefinition): Promise<void> {
+  let ephemeralStoreId: string | null = null
+  try {
+    await runRepository.updateStatus(runId, 'provisioning')
+    ephemeralStoreId = await createEphemeralStore(suite.fixture)
+
+    await runRepository.updateStatus(runId, 'running')
+    const results = await executeChecks(ephemeralStoreId, suite)
+
+    await runRepository.saveResults(runId, results)
+    await runRepository.updateStatus(runId, results.failed > 0 ? 'failed' : 'completed')
+  } catch (err) {
+    await runRepository.updateStatus(runId, 'failed', errorToString(err))
+  } finally {
+    if (ephemeralStoreId) {
+      await destroyEphemeralStore(ephemeralStoreId).catch(logCleanupError)
+    }
+  }
+}
+```
+
+Key rules:
+- State transitions ALWAYS go through repository (persisted before proceeding)
+- Results persisted BEFORE cleanup begins (NFR17)
+- `finally` block guarantees cleanup attempt (NFR15)
+- Cleanup errors are logged but don't overwrite the run status
+
+**Error Handling Flow (extends existing):**
+1. Repository/OpenFGA error → execution engine catches → updates run status to 'failed' with error message
+2. API route errors → existing error-handler middleware → error envelope
+3. Frontend `useApi` → detects error envelope → triggers toast
 
 ### Enforcement Guidelines
 
 **All AI Agents MUST:**
-- Follow naming conventions exactly as specified above
-- Use the Pinia store pattern (setup syntax with loading/error/data)
-- Route all API calls through the `useApi` composable
-- Use Zod schemas for all backend route validation
+- Place all test-suite backend code under `backend/src/test-suites/`
+- Place all test-suite frontend components under `frontend/src/components/test-suites/`
+- Use the repository pattern for ALL database access — services never import pg directly
+- Follow snake_case in SQL, camelCase in TypeScript/JSON — repositories handle mapping
+- Use try/finally for ANY code path that creates an ephemeral store
+- Follow the existing Pinia store pattern (setup syntax, loading/error/data refs, useApi)
 - Co-locate tests next to source files
-- Use the error envelope format for all backend error responses
-- Log all backend errors with Pino before responding
+- Use Zod schemas for all new API route validation
+- Use the existing error envelope format for all error responses
 
 ## Project Structure & Boundaries
 
-### Complete Project Directory Structure
+### New Files Added for Test Suite Feature
 
 ```
-openfga-viewer/
-├── package.json                    # Root: npm workspaces config
-├── .gitignore
-├── .env.example                    # Template for env vars
-├── docker-compose.yml              # Dev: frontend + backend + OpenFGA
-├── Dockerfile                      # Prod: multi-stage single image
-├── LICENSE                         # Proprietary license
-│
-├── frontend/
-│   ├── package.json
-│   ├── vite.config.ts              # Vite 8 + proxy config for /api/*
-│   ├── tailwind.config.ts          # Tailwind v4.2
-│   ├── tsconfig.json
-│   ├── tsconfig.app.json
-│   ├── tsconfig.node.json
-│   ├── index.html
-│   ├── env.d.ts
-│   ├── public/
-│   │   └── favicon.ico
-│   └── src/
-│       ├── main.ts                 # App entry point
-│       ├── App.vue                 # Root component (layout shell)
-│       ├── style.css               # Tailwind base imports
-│       ├── router/
-│       │   └── index.ts            # Vue Router config (all routes)
-│       ├── stores/
-│       │   ├── connection.ts       # OpenFGA connection state + active store
-│       │   ├── model.ts            # Authorization model (JSON + DSL)
-│       │   ├── tuples.ts           # Tuple list, pagination, filters
-│       │   ├── queries.ts          # Query results (check, list-objects, list-users, expand)
-│       │   └── stores.ts           # Store list (CRUD)
-│       ├── composables/
-│       │   ├── useApi.ts           # HTTP client: /api/* prefix, error envelope handling, toast trigger
-│       │   └── useToast.ts         # Toast notification state + show/dismiss
-│       ├── views/
-│       │   ├── ModelViewer.vue     # FR14-17: DSL view + graph view (tabs)
-│       │   ├── TupleManager.vue    # FR18-22: data table + add/delete form
-│       │   ├── QueryConsole.vue    # FR23-27: tabbed query interface
-│       │   ├── RelationshipGraph.vue # FR28-34: entity graph from tuples
-│       │   ├── StoreAdmin.vue      # FR8-13: store list, create, delete, backup/restore
-│       │   └── ImportExport.vue    # FR35-38: import/export JSON files
-│       ├── components/
-│       │   ├── layout/
-│       │   │   ├── AppHeader.vue   # FR40: title, connection badge, active store
-│       │   │   └── AppSidebar.vue  # FR39: navigation links
-│       │   ├── model/
-│       │   │   ├── ModelDslView.vue    # FR14: DSL with syntax highlighting
-│       │   │   └── ModelGraphView.vue  # FR15-16: Vue Flow type/relation graph
-│       │   ├── tuples/
-│       │   │   ├── TupleTable.vue      # FR18-19: TanStack Table with filters
-│       │   │   └── TupleForm.vue       # FR20: add tuple form
-│       │   ├── query/
-│       │   │   ├── CheckQuery.vue      # FR23: check with green/red result
-│       │   │   ├── ListObjectsQuery.vue # FR24: list objects result
-│       │   │   ├── ListUsersQuery.vue  # FR25: list users result
-│       │   │   └── ExpandQuery.vue     # FR26: expand as collapsible tree
-│       │   ├── graph/
-│       │   │   ├── RelationshipGraphCanvas.vue  # FR28-31, FR34: Vue Flow canvas
-│       │   │   └── GraphNodeDetail.vue          # FR33: node detail panel
-│       │   └── common/
-│       │       ├── ToastContainer.vue
-│       │       ├── ConnectionBadge.vue  # FR7: connected/error badge
-│       │       └── ConfirmDialog.vue    # Reusable confirm modal (delete ops)
-│       └── types/
-│           ├── openfga.ts          # OpenFGA domain types (Store, Model, Tuple, etc.)
-│           └── api.ts              # API response/request types
-│
-└── backend/
-    ├── package.json
-    ├── tsconfig.json
-    └── src/
-        ├── server.ts               # Entry point: create app, listen on PORT
-        ├── app.ts                   # Express app: middleware, routes, static files
-        ├── config.ts                # Env var loading (dotenv): OPENFGA_URL, API_KEY, STORE_ID, PORT
-        ├── routes/
-        │   ├── connection.ts        # FR4-6: GET /api/connection, POST /api/connection/test
-        │   ├── stores.ts            # FR8-13: /api/stores CRUD + backup/restore
-        │   ├── model.ts             # FR14-17: GET /api/stores/:storeId/model (JSON + DSL)
-        │   ├── tuples.ts            # FR18-22: /api/stores/:storeId/tuples CRUD + batch
-        │   ├── queries.ts           # FR23-27: /api/stores/:storeId/query/{check,list-objects,list-users,expand}
-        │   └── import-export.ts     # FR35-38: /api/stores/:storeId/export, /api/import
-        ├── services/
-        │   ├── openfga-client.ts    # HTTP client to OpenFGA instance (auth header injection)
-        │   ├── store-service.ts     # Store CRUD + backup logic
-        │   ├── model-service.ts     # Model fetch + DSL conversion via syntax-transformer
-        │   ├── tuple-service.ts     # Tuple read/write/delete + pagination
-        │   ├── query-service.ts     # Check, ListObjects, ListUsers, Expand
-        │   └── import-export-service.ts  # Export (model+tuples→JSON), Import (JSON→store)
-        ├── middleware/
-        │   ├── error-handler.ts     # Global error handler: catch → Pino log → error envelope
-        │   └── validate.ts          # Zod validation middleware factory
-        ├── schemas/
-        │   ├── store.ts             # Zod: create store, backup/restore params
-        │   ├── tuple.ts             # Zod: tuple CRUD, batch delete, filter params
-        │   ├── query.ts             # Zod: check, list-objects, list-users, expand params
-        │   └── import-export.ts     # Zod: import file structure validation
-        └── types/
-            ├── openfga.ts           # OpenFGA API response types
-            └── api.ts               # Internal API types (error envelope, etc.)
+backend/src/
+  test-suites/
+    routes/
+      suites.ts                    # CRUD: GET/POST/PUT/DELETE /api/suites, GET /api/suites/:suiteId
+      suites.test.ts
+      runs.ts                      # POST /api/suites/:suiteId/run, GET /api/runs/:runId, GET /api/runs
+      runs.test.ts
+    services/
+      suite-service.ts             # Suite CRUD orchestration, validation
+      suite-service.test.ts
+      execution-engine.ts          # Fire-and-forget run: provision → execute → cleanup
+      execution-engine.test.ts
+      run-service.ts               # Run queries, status, results aggregation
+      run-service.test.ts
+    repositories/
+      suite-repository.ts          # SQL: suites table CRUD, snake_case → camelCase mapping
+      suite-repository.test.ts
+      run-repository.ts            # SQL: runs + run_results tables, status updates, results persistence
+      run-repository.test.ts
+    schemas/
+      suite.ts                     # Zod: SuiteDefinition, TestGroup, TestCase, Fixture validation
+      run.ts                       # Zod: run creation params, status query params
+    types/
+      suite.ts                     # SuiteDefinition, SuiteListItem, TestCase, TestGroup, Fixture
+      run.ts                       # RunStatus, RunResult, RunSummary, TestCaseResult
+    db/
+      pool.ts                      # pg.Pool init, isAvailable() check, graceful shutdown
+      pool.test.ts
+      migrate.ts                   # node-pg-migrate runner: auto (startup) + CLI mode
+    migrations/
+      001_create-suites.sql        # suites table: id, name, description, tags, definition (JSONB), timestamps
+      002_create-runs.sql          # runs table: id, suite_id (FK), status, started_at, completed_at, error, timestamps
+      003_create-run-results.sql   # run_results table: id, run_id (FK), test_case (JSONB), expected, actual, passed, duration_ms, error
+
+frontend/src/
+  stores/
+    suites.ts                      # Suite list, CRUD actions, current suite definition
+    suites.test.ts
+    runs.ts                        # Current run state, polling, results
+    runs.test.ts
+  views/
+    TestSuites.vue                 # Suite list page — grid of suite cards with last run status
+    SuiteEditor.vue                # Suite editor — tabs: Form / JSON / Fixture
+    RunResults.vue                 # Run results page — summary + per-test detail
+  components/
+    test-suites/
+      SuiteList.vue                # Suite cards grid with name, tags, last run badge
+      SuiteCard.vue                # Individual suite card
+      SuiteForm.vue                # Form editor: groups → test cases (add/edit/remove)
+      SuiteJsonEditor.vue          # CodeMirror 6 JSON editor with validation
+      FixtureEditor.vue            # Fixture viewer/editor (model + tuples JSON)
+      TestCaseForm.vue             # Single test case form: user, relation, object, expected, meta
+      GroupForm.vue                # Group form: name, description, test case list
+      RunSummary.vue               # Total/passed/failed/errored bar with timing
+      TestResultRow.vue            # Per-test: definition + expected vs actual + status icon + timing
+      RunStatusBadge.vue           # Status badge: pending (gray), running (blue), completed (green), failed (red)
+      RunProgress.vue              # Polling status display during execution
+
+docker-compose.yml                 # Updated: add postgres service
+.env.example                       # Updated: add DATABASE_URL
 ```
 
 ### Architectural Boundaries
 
 **API Boundaries:**
-- Frontend → Backend: all traffic via `/api/*` prefix. Frontend never contacts OpenFGA directly.
-- Backend → OpenFGA: `openfga-client.ts` is the single point of contact. All services use it. Auth header injected here.
-- External boundary: OpenFGA instance URL + pre-shared key, configured via env vars.
+- New routes registered in `backend/src/app.ts` via import from `test-suites/routes/`
+- `/api/suites/*` and `/api/runs/*` — new namespace, no overlap with existing `/api/stores/*`
+- All new routes use existing `validate` middleware + new Zod schemas from `test-suites/schemas/`
+- All new routes use existing `error-handler` middleware
 
-**Component Boundaries:**
-- Each Vue view is self-contained and owns its page-level layout
-- Views compose feature components (e.g., `ModelViewer` uses `ModelDslView` + `ModelGraphView`)
-- Components in `common/` are reusable across all views
-- Pinia stores are the single source of truth — components read from stores, never fetch directly
+**Module Boundaries:**
+- `test-suites/` imports FROM existing code: `services/openfga-client.ts` (ephemeral store ops), `middleware/validate.ts`, `middleware/error-handler.ts`
+- Existing code NEVER imports from `test-suites/` — one-way dependency
+- `test-suites/db/pool.ts` is self-contained — does not affect existing backend startup if DB unavailable
 
-**Service Boundaries (Backend):**
-- Routes handle HTTP (parse request, call service, send response)
-- Services handle business logic (call OpenFGA client, transform data)
-- `openfga-client.ts` handles transport (HTTP to OpenFGA, auth injection)
-- Schemas handle validation (Zod, invoked via `validate` middleware)
+**Data Boundaries:**
+- PostgreSQL is exclusively used by `test-suites/repositories/` — no other code touches it
+- Suite definitions stored as JSONB in `suites.definition` column — the full `{ fixture, groups[] }` structure
+- Run results stored per-test in `run_results` table — enables per-test querying
+- Ephemeral stores are OpenFGA stores created/destroyed via `openfga-client` — no PostgreSQL involvement
 
 ### Requirements to Structure Mapping
 
-| FR Category | Frontend | Backend |
+| FR Category | Backend Files | Frontend Files |
 |---|---|---|
-| Connection & Config (FR1-7) | `stores/connection.ts`, `ConnectionBadge.vue`, `AppHeader.vue` | `routes/connection.ts`, `config.ts`, `openfga-client.ts` |
-| Store Admin (FR8-13) | `views/StoreAdmin.vue`, `stores/stores.ts` | `routes/stores.ts`, `store-service.ts`, `schemas/store.ts` |
-| Model Viewing (FR14-17) | `views/ModelViewer.vue`, `ModelDslView.vue`, `ModelGraphView.vue`, `stores/model.ts` | `routes/model.ts`, `model-service.ts` |
-| Tuple Mgmt (FR18-22) | `views/TupleManager.vue`, `TupleTable.vue`, `TupleForm.vue`, `stores/tuples.ts` | `routes/tuples.ts`, `tuple-service.ts`, `schemas/tuple.ts` |
-| Queries (FR23-27) | `views/QueryConsole.vue`, `Check/ListObjects/ListUsers/ExpandQuery.vue`, `stores/queries.ts` | `routes/queries.ts`, `query-service.ts`, `schemas/query.ts` |
-| Rel. Graph (FR28-34) | `views/RelationshipGraph.vue`, `RelationshipGraphCanvas.vue`, `GraphNodeDetail.vue` | Reuses `tuple-service.ts` (reads tuples for graph) |
-| Import/Export (FR35-38) | `views/ImportExport.vue` | `routes/import-export.ts`, `import-export-service.ts`, `schemas/import-export.ts` |
-| Navigation (FR39-41) | `AppSidebar.vue`, `AppHeader.vue`, `router/index.ts` | N/A (frontend-only) |
-
-### Cross-Cutting Concerns Mapping
-
-| Concern | Location |
-|---|---|
-| Error handling | Backend: `middleware/error-handler.ts` → Frontend: `composables/useApi.ts` → `composables/useToast.ts` |
-| Connection state | `stores/connection.ts` → consumed by all views + `AppHeader.vue` |
-| Store context | `stores/connection.ts` (activeStoreId) → passed to all backend API calls |
-| Loading states | Each Pinia store (`loading` ref) → each view binds to its store |
-| Validation | Backend: `middleware/validate.ts` + `schemas/*.ts` |
-| Logging | Backend: Pino in `app.ts` setup + `error-handler.ts` |
+| Suite CRUD (FR1-9) | `routes/suites.ts`, `services/suite-service.ts`, `repositories/suite-repository.ts`, `schemas/suite.ts` | `stores/suites.ts`, `views/TestSuites.vue`, `SuiteList.vue`, `SuiteCard.vue` |
+| Dual-mode editor (FR10-11) | — (frontend only) | `views/SuiteEditor.vue`, `SuiteForm.vue`, `SuiteJsonEditor.vue`, `GroupForm.vue`, `TestCaseForm.vue` |
+| Fixture management (FR12-14) | Validation in `schemas/suite.ts` | `FixtureEditor.vue` |
+| Test execution (FR15-23) | `services/execution-engine.ts`, `repositories/run-repository.ts` | `stores/runs.ts`, `RunProgress.vue` |
+| Run results (FR24-28) | `routes/runs.ts`, `services/run-service.ts`, `repositories/run-repository.ts` | `views/RunResults.vue`, `RunSummary.vue`, `TestResultRow.vue`, `RunStatusBadge.vue` |
+| Import/export (FR29-32) | `routes/suites.ts` (export/import endpoints) | `stores/suites.ts` (import/export actions) |
+| Validation (FR33-35) | `schemas/suite.ts`, `services/suite-service.ts` | Toast display via existing `useApi` |
+| REST API (FR36-41) | `routes/suites.ts`, `routes/runs.ts` | — (consumed by UI + CI/CD) |
+| Persistence (FR42-45) | `db/pool.ts`, `db/migrate.ts`, `migrations/*`, `repositories/*` | — |
 
 ### Data Flow
 
 ```
-User Action → Vue Component → Pinia Store Action → useApi composable
-    → HTTP /api/* → Express Route → Zod Validation → Service
-    → openfga-client.ts → OpenFGA Instance
-    ← OpenFGA Response ← Service (transform) ← Route (envelope)
-    ← HTTP Response ← useApi (parse envelope, toast on error)
+User Action → Vue Component → Pinia Store (suites/runs) → useApi composable
+    → HTTP /api/suites/* or /api/runs/* → Express Route → Zod Validation
+    → Service (suite-service/run-service/execution-engine)
+    → Repository (SQL via pg.Pool) → PostgreSQL
+    → OR openfga-client → OpenFGA (ephemeral store ops)
+    ← Response ← Route (envelope) ← useApi (parse, toast on error)
     ← Pinia Store (update refs) ← Vue Component (reactive render)
 ```
 
-### Development Workflow
+### Database Schema Overview
 
-**Dev mode (Docker Compose):**
-- `frontend`: Vite dev server on `:5173`, proxies `/api/*` to backend
-- `backend`: `tsx --watch src/server.ts` on `:3000`
-- `openfga`: OpenFGA instance on `:8080` (official Docker image)
+**suites:**
 
-**Production build (Dockerfile):**
-1. Stage 1: Build frontend → `npm run build` → `frontend/dist/`
-2. Stage 2: Build backend → `tsc` → `backend/dist/`
-3. Stage 3: Runtime → copy backend dist + frontend dist → Express serves SPA from `frontend/dist/`, API from `/api/*`
-4. Single image, single port (`PORT` env var, default 3000)
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | PK, generated |
+| name | VARCHAR(255) | NOT NULL |
+| description | TEXT | nullable |
+| tags | TEXT[] | PostgreSQL array |
+| definition | JSONB | Full suite structure: { fixture, groups[] } |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() |
+| updated_at | TIMESTAMPTZ | DEFAULT NOW() |
+
+**runs:**
+
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | PK, generated |
+| suite_id | UUID | FK → suites.id |
+| status | VARCHAR(20) | pending/provisioning/running/completed/failed |
+| started_at | TIMESTAMPTZ | nullable |
+| completed_at | TIMESTAMPTZ | nullable |
+| error | TEXT | nullable, for infrastructure errors |
+| summary | JSONB | { total, passed, failed, errored, durationMs } |
+| created_at | TIMESTAMPTZ | DEFAULT NOW() |
+
+**run_results:**
+
+| Column | Type | Notes |
+|---|---|---|
+| id | UUID | PK, generated |
+| run_id | UUID | FK → runs.id |
+| test_case | JSONB | { user, relation, object, expected, meta } |
+| actual | BOOLEAN | nullable (null if errored) |
+| passed | BOOLEAN | NOT NULL |
+| duration_ms | INTEGER | execution time for this check |
+| error | TEXT | nullable, for per-test execution errors |
 
 ## Architecture Validation Results
 
-### Coherence Validation ✅
+### Coherence Validation
 
 **Decision Compatibility:**
-All technology choices are compatible and widely used together. Vue 3 + Vite 8 + Tailwind v4.2 + Pinia + Vue Flow on frontend. Express + TypeScript + Pino + Zod on backend. npm workspaces for monorepo. No version conflicts or incompatibilities detected.
+All technology choices are compatible. pg (node-postgres) + node-pg-migrate + raw SQL with repository pattern form a consistent, minimal data layer. Express 5.1 extends naturally with new route modules. CodeMirror 6 + Pinia JSON state + Vue 3 composition API are well-tested together. Fire-and-forget execution with setInterval polling is a standard async UI pattern.
 
 **Pattern Consistency:**
-Naming conventions align with ecosystem standards (camelCase for JS/TS/JSON, PascalCase for Vue components, kebab-case for backend files). Pinia store pattern (setup syntax with loading/error/data) is uniform. Error envelope is consistent from backend through to frontend toast.
+- Naming: snake_case (SQL) ↔ camelCase (TS/JSON) with repository as the mapping boundary — consistent across all entities
+- Structure: dedicated `test-suites/` subdirectory follows the module isolation principle; frontend follows existing component/store/view pattern
+- Communication: Pinia stores + useApi composable + error envelope — identical to existing codebase patterns
+- Process: try/finally for cleanup, repository for all DB access, Zod for all validation — no exceptions
 
 **Structure Alignment:**
-Directory structure directly supports all decisions. Clear separation: routes → services → openfga-client. Frontend: views → components → stores → composables. No overlap or ambiguity in file placement.
+Directory structure directly supports all decisions. Backend test-suites module has clear internal layers (routes → services → repositories → db). Frontend has clear separation (views → components → stores). One-way dependency from test-suites → existing code is enforced by structure.
 
-### Requirements Coverage Validation ✅
+### Requirements Coverage Validation
 
 **Functional Requirements Coverage:**
-All 41 FRs mapped to specific files in both frontend and backend (see Requirements to Structure Mapping). Every FR category has a dedicated view, store, route, and service.
+All 45 FRs mapped to specific files (see Requirements to Structure Mapping table). Every FR category has dedicated backend and frontend components.
 
 **Non-Functional Requirements Coverage:**
-- Performance: Vite 8 (Rolldown) for fast builds, TanStack Table with virtualization for 10K rows, Vue Flow + dagre for graph rendering, Pinia for reactive state (no unnecessary re-renders)
-- Security: API key in env var (backend-only), Zod validation on all routes, same-origin deployment eliminates CORS attack surface, no credential persistence
-- Integration: `openfga-client.ts` as single integration point, `@openfga/syntax-transformer` for DSL conversion, self-contained JSON export format
+- NFR1 (100 checks <30s): Sequential execution via openfga-client, ephemeral store provisioning <5s (NFR6). Architecture doesn't block this — performance depends on OpenFGA latency.
+- NFR2 (polling <200ms): Simple SELECT from `runs` table by PK — well within target.
+- NFR3 (editor loads 100+ tests <1s): JSON from single JSONB column, rendered by Vue — no architectural bottleneck.
+- NFR5 (CRUD <50ms): Simple CRUD queries on 3 tables — trivially met with PostgreSQL.
+- NFR7-10 (security): DATABASE_URL env-only, Zod validation, unique ephemeral store names via UUID.
+- NFR11-14 (integration): openfga-client reuse, standard DATABASE_URL, JSON format, existing export format.
+- NFR15-17 (reliability): try/finally cleanup, graceful degradation, results-before-cleanup ordering.
 
-### Implementation Readiness Validation ✅
+### Implementation Readiness Validation
 
 **Decision Completeness:**
-All critical decisions documented with specific versions. Technology stack fully specified. No ambiguous "to be decided" items remain for MVP.
+All critical decisions documented with specific technology choices. No ambiguous items remain for MVP. Deferred items (job queue, SSE, retention policy) explicitly listed.
 
 **Structure Completeness:**
-Every file in the project tree has a clear purpose annotated with FR references. Integration points between frontend and backend are well-defined (`/api/*` prefix, error envelope, Pinia stores ↔ useApi).
+Every file in the new module has a clear purpose with FR references. Integration points between test-suites module and existing code are well-defined (openfga-client, validate middleware, error-handler middleware, useApi composable).
 
 **Pattern Completeness:**
-All 6 conflict areas resolved. Naming, structure, format, communication, and process patterns are documented with concrete examples (Pinia store template, error flow diagram, data flow diagram).
+All 5 conflict areas resolved with concrete code examples (repository pattern, Pinia store pattern, polling pattern, execution engine state machine, naming conventions).
 
 ### Gap Analysis Results
 
-**No critical gaps found.**
+**No critical gaps.**
 
 **Minor implementation notes:**
-- FR5 (runtime URL update): `openfga-client.ts` must accept URL as a mutable config, not a module-level constant. The connection store on frontend sends PUT to `/api/connection` to update, and backend reinitializes the client with the new URL.
-- FR32 (graph type filter): The `RelationshipGraphCanvas.vue` component needs a filter control — not shown as a separate component, should be inline within the canvas view.
-- DSL syntax highlighting (FR14): No syntax highlighting library was explicitly chosen. `@openfga/syntax-transformer` produces DSL text; a lightweight code highlighter (e.g., Shiki or Prism) may be needed for display. This can be decided at implementation time without architectural impact.
+- FR27 (last run status in suite list): Implement via LEFT JOIN in `suite-repository.findAll()` — no schema change needed. The repository query joins `suites` with the latest `runs` row per suite.
+- Suite definition JSONB validation: The `definition` column stores the full suite structure. Zod schema validates before INSERT/UPDATE. PostgreSQL JSONB enables future querying by test case fields if needed.
+- Ephemeral store naming: Use `test-run-{runId}` as the store name to ensure uniqueness (UUID-based) and enable cleanup identification if orphaned stores are discovered.
 
 ### Architecture Completeness Checklist
 
-**✅ Requirements Analysis**
-- [x] Project context thoroughly analyzed
-- [x] Scale and complexity assessed
-- [x] Technical constraints identified
-- [x] Cross-cutting concerns mapped
+**Requirements Analysis**
+- [x] Project context thoroughly analyzed (45 FRs, 17 NFRs, brownfield constraints)
+- [x] Scale and complexity assessed (medium — persistence + async + state machine)
+- [x] Technical constraints identified (existing codebase, Express 5.1, optional PostgreSQL)
+- [x] Cross-cutting concerns mapped (DB availability, cleanup guarantee, error distinction, feature isolation)
 
-**✅ Architectural Decisions**
-- [x] Critical decisions documented with versions
-- [x] Technology stack fully specified
-- [x] Integration patterns defined
-- [x] Performance considerations addressed
+**Architectural Decisions**
+- [x] Critical decisions documented (pg, raw SQL, node-pg-migrate, fire-and-forget, CodeMirror 6, JSON source of truth)
+- [x] Technology stack fully specified with rationale
+- [x] Integration patterns defined (repository pattern, openfga-client reuse, existing middleware)
+- [x] Performance considerations addressed (polling interval, JSONB queries, sequential execution)
 
-**✅ Implementation Patterns**
-- [x] Naming conventions established
-- [x] Structure patterns defined
-- [x] Communication patterns specified
-- [x] Process patterns documented
+**Implementation Patterns**
+- [x] Naming conventions established (SQL snake_case, TS/JSON camelCase, repository mapping)
+- [x] Structure patterns defined (dedicated subdirectory, co-located tests)
+- [x] Communication patterns specified (Pinia store, useApi, polling, error envelope)
+- [x] Process patterns documented (execution engine state machine, try/finally cleanup, error handling flow)
 
-**✅ Project Structure**
-- [x] Complete directory structure defined
-- [x] Component boundaries established
-- [x] Integration points mapped
-- [x] Requirements to structure mapping complete
+**Project Structure**
+- [x] Complete directory structure defined (all new files listed with purpose)
+- [x] Component boundaries established (one-way dependency, module isolation)
+- [x] Integration points mapped (openfga-client, middleware, useApi)
+- [x] Requirements to structure mapping complete (all 45 FRs → files)
+- [x] Database schema defined (3 tables with column types and relationships)
 
 ### Architecture Readiness Assessment
 
@@ -636,30 +678,32 @@ All 6 conflict areas resolved. Naming, structure, format, communication, and pro
 **Confidence Level:** High
 
 **Key Strengths:**
-- Clean, minimal architecture — no over-engineering for a stateless proxy tool
-- Every FR traceable to specific files in both frontend and backend
-- Consistent patterns that prevent AI agent divergence
-- Same-origin deployment eliminates an entire class of CORS/security issues
-- Technology choices are all mainstream, well-documented, and actively maintained
+- Clean module isolation — test-suites is a self-contained subdirectory with one-way dependency on existing code
+- Repository pattern provides future-proof SQL abstraction without current overhead
+- Fire-and-forget + polling is simple, debuggable, and matches CI/CD polling pattern from PRD
+- JSONB for suite definitions enables flexible schema evolution without migrations
+- Existing patterns (Pinia, useApi, error envelope, Zod) extend naturally — no new paradigms to learn
 
 **Areas for Future Enhancement:**
-- OpenTelemetry integration (Phase 2/3) — Pino foundation is ready
-- OIDC/mTLS auth (Phase 3) — middleware slot exists
-- WebSocket/SSE for real-time (Phase 2) — architecture doesn't block it
-- Shared types package between frontend/backend — currently duplicated in `types/` folders; could become a third workspace package if duplication grows
+- Background job queue for concurrent test runs (replace fire-and-forget with proper queue)
+- SSE/WebSocket for real-time execution progress (replace polling)
+- Run retention/archival policy (scheduled cleanup of old runs)
+- Microservice extraction (move test-suites/ to standalone service)
+- Shared types package between frontend/backend (if type duplication grows)
 
 ### Implementation Handoff
 
 **AI Agent Guidelines:**
 - Follow all architectural decisions exactly as documented
-- Use implementation patterns consistently across all components
-- Respect project structure and boundaries
+- Use implementation patterns consistently — especially repository pattern and try/finally cleanup
+- Respect module boundaries: test-suites/ imports from existing code, never the reverse
+- Place ALL test-suite code in the dedicated subdirectory structure
 - Refer to this document for all architectural questions
-- When in doubt, follow the established Pinia store pattern and error handling flow
 
 **First Implementation Priority:**
-1. Initialize monorepo with npm workspaces
-2. Scaffold frontend with `npm create vue@latest` (TypeScript, Router, Pinia, Vitest, ESLint+Prettier)
-3. Initialize backend Express + TypeScript package
-4. Set up Docker Compose (frontend + backend + OpenFGA)
-5. Implement `openfga-client.ts` + connection test route as the first vertical slice
+1. Add PostgreSQL to Docker Compose + `.env.example`
+2. Install pg + @types/pg + node-pg-migrate in backend
+3. Implement `db/pool.ts` (pg.Pool init + availability check)
+4. Implement `db/migrate.ts` (auto-run + CLI)
+5. Create initial migrations (3 tables)
+6. Implement suite repository + service + routes (CRUD vertical slice)
