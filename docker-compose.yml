@@ -26,9 +26,13 @@ services:
     environment:
       - OPENFGA_URL=http://openfga:8080
       - PORT=3000
+      - DATABASE_URL=postgresql://openfga_viewer:openfga_viewer@postgres:5432/openfga_viewer
     command: sh -c "npm install && npm run dev"
     depends_on:
-      - openfga
+      openfga:
+        condition: service_started
+      postgres:
+        condition: service_healthy
 
   openfga:
     image: openfga/openfga:latest
@@ -37,6 +41,23 @@ services:
       - "8080:8080"
       - "8081:8081"
 
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: openfga_viewer
+      POSTGRES_PASSWORD: openfga_viewer
+      POSTGRES_DB: openfga_viewer
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openfga_viewer"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   frontend_modules:
   backend_modules:
+  postgres_data:

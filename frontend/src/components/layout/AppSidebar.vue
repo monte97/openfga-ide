@@ -8,6 +8,7 @@ import {
   GitBranch,
   Settings,
   ArrowUpDown,
+  FlaskConical,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-vue-next'
@@ -21,6 +22,7 @@ const navItems = [
   { key: 'relationship-graph', label: 'Relationship Graph', icon: GitBranch, to: '/relationship-graph' },
   { key: 'store-admin', label: 'Store Admin', icon: Settings, to: '/store-admin' },
   { key: 'import-export', label: 'Import / Export', icon: ArrowUpDown, to: '/import-export' },
+  { key: 'test-suites', label: 'Test Suites', icon: FlaskConical, to: '/test-suites' },
 ]
 
 const STORAGE_KEY = 'sidebar-collapsed'

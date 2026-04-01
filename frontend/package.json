@@ -17,6 +17,10 @@
     "format": "prettier --write --experimental-cli src/"
   },
   "dependencies": {
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lint": "^6.9.5",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "^6.40.0",
     "@fontsource/jetbrains-mono": "^5.2.8",
     "@headlessui/vue": "^1.7.23",
     "@tailwindcss/vite": "^4.2.2",
@@ -31,7 +35,8 @@
     "shiki": "^4.0.2",
     "tailwindcss": "^4.2.2",
     "vue": "^3.5.30",
-    "vue-router": "^5.0.3"
+    "vue-router": "^5.0.3",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@stryker-mutator/core": "^9.6.0",

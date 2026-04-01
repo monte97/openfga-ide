@@ -12,6 +12,7 @@ const router = createRouter({
     { path: '/relationship-graph', component: { template: '<div />' } },
     { path: '/store-admin', component: { template: '<div />' } },
     { path: '/import-export', component: { template: '<div />' } },
+    { path: '/test-suites', component: { template: '<div />' } },
   ],
 })
 
@@ -39,10 +40,10 @@ describe('AppSidebar', () => {
     localStorage.clear()
   })
 
-  it('renders all 6 navigation links', () => {
+  it('renders all 7 navigation links', () => {
     const wrapper = mountSidebar()
     const links = wrapper.findAll('a')
-    expect(links).toHaveLength(6)
+    expect(links).toHaveLength(7)
     const hrefs = links.map((l) => l.attributes('href') ?? '')
     expect(hrefs).toContain('/model-viewer')
     expect(hrefs).toContain('/tuple-manager')
@@ -50,6 +51,7 @@ describe('AppSidebar', () => {
     expect(hrefs).toContain('/relationship-graph')
     expect(hrefs).toContain('/store-admin')
     expect(hrefs).toContain('/import-export')
+    expect(hrefs).toContain('/test-suites')
   })
 
   it('starts expanded on wide viewport (innerWidth >= 1280)', async () => {

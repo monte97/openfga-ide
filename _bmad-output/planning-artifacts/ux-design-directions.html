@@ -3,1399 +3,527 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>OpenFGA Viewer — UX Design Direction</title>
+<title>OpenFGA Viewer — Test Suite Design Directions</title>
+<script src="https://cdn.tailwindcss.com"></script>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
-
-  :root {
-    --color-success: #22c55e;
-    --color-error: #ef4444;
-    --color-warning: #f59e0b;
-    --color-info: #3b82f6;
-    --surface-base: #030712;    /* gray-950 */
-    --surface-card: #111827;    /* gray-900 */
-    --surface-elevated: #1f2937; /* gray-800 */
-    --surface-border: #374151;  /* gray-700 */
-    --text-primary: #f3f4f6;    /* gray-100 */
-    --text-secondary: #9ca3af;  /* gray-400 */
-    --text-emphasis: #ffffff;
-    --font-ui: 'Inter', system-ui, -apple-system, sans-serif;
-    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
-  }
-
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-
-  body {
-    font-family: var(--font-ui);
-    background: var(--surface-base);
-    color: var(--text-primary);
-    font-size: 14px;
-    line-height: 1.5;
-  }
-
-  /* ===== NAVIGATION BETWEEN MOCKUPS ===== */
-  .mockup-nav {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    z-index: 1000;
-    background: #000;
-    border-bottom: 1px solid var(--surface-border);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 8px 16px;
-    font-size: 13px;
-  }
-  .mockup-nav .nav-label {
-    color: var(--text-secondary);
-    font-weight: 600;
-    margin-right: 8px;
-  }
-  .mockup-nav button {
-    background: var(--surface-elevated);
-    border: 1px solid var(--surface-border);
-    color: var(--text-primary);
-    padding: 6px 14px;
-    border-radius: 6px;
-    cursor: pointer;
-    font-family: var(--font-ui);
-    font-size: 13px;
-    transition: all 0.15s;
-  }
-  .mockup-nav button:hover { background: var(--surface-border); }
-  .mockup-nav button.active {
-    background: var(--color-info);
-    border-color: var(--color-info);
-    color: white;
-  }
-
-  .mockup-section {
-    display: none;
-    margin-top: 44px;
-    min-height: calc(100vh - 44px);
-  }
-  .mockup-section.active { display: block; }
-
-  /* ===== APP SHELL ===== */
-  .app-shell {
-    display: flex;
-    flex-direction: column;
-    height: calc(100vh - 44px);
-  }
-
-  /* Header */
-  .app-header {
-    height: 56px;
-    background: var(--surface-card);
-    border-bottom: 1px solid var(--surface-border);
-    display: flex;
-    align-items: center;
-    padding: 0 16px;
-    gap: 16px;
-    flex-shrink: 0;
-  }
-  .app-logo {
-    font-size: 16px;
-    font-weight: 700;
-    color: var(--text-emphasis);
-    display: flex;
-    align-items: center;
-    gap: 8px;
-  }
-  .app-logo svg { width: 24px; height: 24px; }
-  .header-spacer { flex: 1; }
-  .connection-badge {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    font-size: 12px;
-    padding: 4px 10px;
-    border-radius: 9999px;
-    background: rgba(34, 197, 94, 0.1);
-    border: 1px solid rgba(34, 197, 94, 0.3);
-    color: var(--color-success);
-  }
-  .connection-badge .dot {
-    width: 8px;
-    height: 8px;
-    border-radius: 50%;
-    background: var(--color-success);
-  }
-  .connection-badge.error {
-    background: rgba(239, 68, 68, 0.1);
-    border-color: rgba(239, 68, 68, 0.3);
-    color: var(--color-error);
-  }
-  .connection-badge.error .dot { background: var(--color-error); }
-  .store-selector {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    background: var(--surface-elevated);
-    border: 1px solid var(--surface-border);
-    padding: 6px 12px;
-    border-radius: 6px;
-    font-size: 13px;
-    color: var(--text-primary);
-    cursor: pointer;
-  }
-  .store-selector:hover { border-color: var(--text-secondary); }
-  .store-selector svg { width: 16px; height: 16px; color: var(--text-secondary); }
-
-  /* Layout */
-  .app-body {
-    display: flex;
-    flex: 1;
-    overflow: hidden;
-  }
-
-  /* Sidebar */
-  .app-sidebar {
-    width: 240px;
-    background: var(--surface-card);
-    border-right: 1px solid var(--surface-border);
-    padding: 12px 0;
-    flex-shrink: 0;
-    display: flex;
-    flex-direction: column;
-    transition: width 0.2s;
-  }
-  .app-sidebar.collapsed { width: 64px; }
-  .sidebar-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 8px 16px;
-    margin-bottom: 8px;
-    cursor: pointer;
-    color: var(--text-secondary);
-  }
-  .sidebar-toggle:hover { color: var(--text-primary); }
-  .nav-item {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 16px;
-    color: var(--text-secondary);
-    cursor: pointer;
-    transition: all 0.15s;
-    font-size: 13px;
-    font-weight: 500;
-  }
-  .nav-item:hover {
-    background: var(--surface-elevated);
-    color: var(--text-primary);
-  }
-  .nav-item.active {
-    background: rgba(59, 130, 246, 0.1);
-    color: var(--color-info);
-    border-right: 2px solid var(--color-info);
-  }
-  .nav-item svg { width: 20px; height: 20px; flex-shrink: 0; }
-  .nav-item .nav-label { white-space: nowrap; }
-  .collapsed .nav-label { display: none; }
-  .collapsed .nav-item { justify-content: center; padding: 10px 0; }
-
-  /* Content */
-  .app-content {
-    flex: 1;
-    padding: 24px;
-    overflow-y: auto;
-  }
-  .page-title {
-    font-size: 24px;
-    font-weight: 600;
-    margin-bottom: 24px;
-    color: var(--text-emphasis);
-  }
-
-  /* ===== CARDS ===== */
-  .card {
-    background: var(--surface-card);
-    border: 1px solid var(--surface-border);
-    border-radius: 8px;
-    padding: 20px;
-    margin-bottom: 16px;
-  }
-  .card-header {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 16px;
-    color: var(--text-emphasis);
-  }
-
-  /* ===== TABS ===== */
-  .tabs {
-    display: flex;
-    gap: 0;
-    border-bottom: 1px solid var(--surface-border);
-    margin-bottom: 20px;
-  }
-  .tab {
-    padding: 10px 20px;
-    font-size: 13px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-    transition: all 0.15s;
-  }
-  .tab:hover { color: var(--text-primary); }
-  .tab.active {
-    color: var(--color-info);
-    border-bottom-color: var(--color-info);
-  }
-
-  /* ===== FORM ELEMENTS ===== */
-  .form-row {
-    display: flex;
-    gap: 12px;
-    align-items: flex-end;
-    margin-bottom: 16px;
-  }
-  .form-group {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    flex: 1;
-  }
-  .form-label {
-    font-size: 12px;
-    font-weight: 500;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .form-input {
-    background: var(--surface-base);
-    border: 1px solid var(--surface-border);
-    border-radius: 6px;
-    padding: 8px 12px;
-    color: var(--text-primary);
-    font-family: var(--font-mono);
-    font-size: 13px;
-    outline: none;
-    transition: border-color 0.15s;
-  }
-  .form-input:focus { border-color: var(--color-info); }
-  .form-input::placeholder { color: var(--surface-border); }
-  .form-select {
-    background: var(--surface-base);
-    border: 1px solid var(--surface-border);
-    border-radius: 6px;
-    padding: 8px 12px;
-    color: var(--text-primary);
-    font-family: var(--font-ui);
-    font-size: 13px;
-    outline: none;
-    cursor: pointer;
-  }
-
-  /* Buttons */
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 8px 16px;
-    border-radius: 6px;
-    font-size: 13px;
-    font-weight: 500;
-    cursor: pointer;
-    border: 1px solid transparent;
-    font-family: var(--font-ui);
-    transition: all 0.15s;
-  }
-  .btn svg { width: 16px; height: 16px; }
-  .btn-primary {
-    background: var(--color-info);
-    color: white;
-  }
-  .btn-primary:hover { background: #2563eb; }
-  .btn-secondary {
-    background: var(--surface-elevated);
-    color: var(--text-primary);
-    border-color: var(--surface-border);
-  }
-  .btn-secondary:hover { background: var(--surface-border); }
-  .btn-danger {
-    background: rgba(239, 68, 68, 0.1);
-    color: var(--color-error);
-    border-color: rgba(239, 68, 68, 0.3);
-  }
-  .btn-danger:hover { background: rgba(239, 68, 68, 0.2); }
-  .btn-success {
-    background: var(--color-success);
-    color: white;
-  }
-
-  /* ===== QUERY RESULT ===== */
-  .query-result {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 32px;
-    border-radius: 8px;
-    margin-top: 16px;
-  }
-  .query-result.allowed {
-    background: rgba(34, 197, 94, 0.08);
-    border: 1px solid rgba(34, 197, 94, 0.2);
-  }
-  .query-result.denied {
-    background: rgba(239, 68, 68, 0.08);
-    border: 1px solid rgba(239, 68, 68, 0.2);
-  }
-  .result-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-bottom: 12px;
-  }
-  .result-icon.allowed { background: rgba(34, 197, 94, 0.15); color: var(--color-success); }
-  .result-icon.denied { background: rgba(239, 68, 68, 0.15); color: var(--color-error); }
-  .result-icon svg { width: 28px; height: 28px; }
-  .result-text {
-    font-size: 18px;
-    font-weight: 600;
-    margin-bottom: 4px;
-  }
-  .result-text.allowed { color: var(--color-success); }
-  .result-text.denied { color: var(--color-error); }
-  .result-detail {
-    font-size: 12px;
-    color: var(--text-secondary);
-    margin-bottom: 12px;
-  }
-  .why-btn {
-    font-size: 13px;
-    color: var(--color-info);
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    background: none;
-    border: none;
-    font-family: var(--font-ui);
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: background 0.15s;
-  }
-  .why-btn:hover { background: rgba(59, 130, 246, 0.1); }
-
-  /* Why expansion */
-  .why-expansion {
-    width: 100%;
-    margin-top: 16px;
-    padding: 16px;
-    background: var(--surface-base);
-    border: 1px solid var(--surface-border);
-    border-radius: 6px;
-  }
-  .resolution-path {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: wrap;
-    font-family: var(--font-mono);
-    font-size: 13px;
-  }
-  .path-node {
-    padding: 4px 10px;
-    border-radius: 4px;
-    font-size: 12px;
-    font-weight: 500;
-  }
-  .path-node.user { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
-  .path-node.group { background: rgba(6, 182, 212, 0.15); color: #22d3ee; }
-  .path-node.resource { background: rgba(139, 92, 246, 0.15); color: #a78bfa; }
-  .path-arrow { color: var(--text-secondary); font-size: 16px; }
-  .path-relation {
-    font-size: 11px;
-    color: var(--text-secondary);
-    font-style: italic;
-  }
-
-  /* ===== DATA TABLE ===== */
-  .data-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 13px;
-  }
-  .data-table th {
-    text-align: left;
-    padding: 10px 12px;
-    border-bottom: 1px solid var(--surface-border);
-    color: var(--text-secondary);
-    font-weight: 500;
-    font-size: 12px;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-  }
-  .data-table td {
-    padding: 10px 12px;
-    border-bottom: 1px solid rgba(55, 65, 81, 0.5);
-    color: var(--text-primary);
-  }
-  .data-table tr:hover td { background: var(--surface-elevated); }
-  .data-table .mono {
-    font-family: var(--font-mono);
-    font-size: 12px;
-  }
-  .data-table .checkbox {
-    width: 16px;
-    height: 16px;
-    accent-color: var(--color-info);
-  }
-  .filter-bar {
-    display: flex;
-    gap: 8px;
-    margin-bottom: 16px;
-    align-items: center;
-  }
-  .filter-input {
-    background: var(--surface-base);
-    border: 1px solid var(--surface-border);
-    border-radius: 6px;
-    padding: 6px 10px;
-    color: var(--text-primary);
-    font-size: 12px;
-    font-family: var(--font-mono);
-    width: 180px;
-    outline: none;
-  }
-  .filter-input:focus { border-color: var(--color-info); }
-  .pagination {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 16px;
-    font-size: 12px;
-    color: var(--text-secondary);
-  }
-
-  /* ===== DSL CODE VIEW ===== */
-  .dsl-view {
-    background: var(--surface-base);
-    border: 1px solid var(--surface-border);
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .dsl-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 8px 12px;
-    background: var(--surface-elevated);
-    border-bottom: 1px solid var(--surface-border);
-    font-size: 12px;
-    color: var(--text-secondary);
-  }
-  .dsl-code {
-    padding: 16px 0;
-    font-family: var(--font-mono);
-    font-size: 13px;
-    line-height: 1.6;
-    overflow-x: auto;
-  }
-  .dsl-line {
-    display: flex;
-    padding: 0 16px;
-  }
-  .dsl-line:hover { background: rgba(255, 255, 255, 0.03); }
-  .line-num {
-    color: var(--surface-border);
-    width: 36px;
-    text-align: right;
-    margin-right: 16px;
-    user-select: none;
-    flex-shrink: 0;
-  }
-  .kw { color: #c084fc; }   /* keyword - purple */
-  .type { color: #60a5fa; }  /* type - blue */
-  .rel { color: #22d3ee; }   /* relation - cyan */
-  .op { color: #fbbf24; }    /* operator - amber */
-  .comment { color: #6b7280; font-style: italic; }
-
-  /* ===== GRAPH PLACEHOLDER ===== */
-  .graph-canvas {
-    background: var(--surface-base);
-    border: 1px solid var(--surface-border);
-    border-radius: 6px;
-    height: 400px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-  }
-  .graph-node {
-    position: absolute;
-    padding: 8px 16px;
-    border-radius: 8px;
-    font-size: 12px;
-    font-family: var(--font-mono);
-    font-weight: 500;
-    cursor: pointer;
-    border: 2px solid;
-    transition: transform 0.15s;
-  }
-  .graph-node:hover { transform: scale(1.05); }
-  .graph-edge {
-    position: absolute;
-    height: 2px;
-    transform-origin: left center;
-  }
-  .edge-label {
-    position: absolute;
-    font-size: 10px;
-    color: var(--text-secondary);
-    font-family: var(--font-mono);
-    background: var(--surface-base);
-    padding: 1px 4px;
-    border-radius: 2px;
-  }
-  .graph-controls {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    display: flex;
-    gap: 4px;
-  }
-  .graph-control-btn {
-    width: 32px;
-    height: 32px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    background: var(--surface-card);
-    border: 1px solid var(--surface-border);
-    border-radius: 6px;
-    color: var(--text-secondary);
-    cursor: pointer;
-  }
-  .graph-control-btn:hover { color: var(--text-primary); background: var(--surface-elevated); }
-
-  /* ===== INSPECTOR PANEL ===== */
-  .inspector-overlay {
-    position: absolute;
-    top: 0;
-    right: 0;
-    width: 320px;
-    height: 100%;
-    background: var(--surface-card);
-    border-left: 1px solid var(--surface-border);
-    padding: 20px;
-    box-shadow: -4px 0 12px rgba(0, 0, 0, 0.3);
-    z-index: 10;
-  }
-  .inspector-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-  }
-  .inspector-title {
-    font-size: 16px;
-    font-weight: 600;
-  }
-  .inspector-close {
-    background: none;
-    border: none;
-    color: var(--text-secondary);
-    cursor: pointer;
-    padding: 4px;
-  }
-  .inspector-section {
-    margin-bottom: 16px;
-  }
-  .inspector-label {
-    font-size: 11px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin-bottom: 8px;
-  }
-  .inspector-row {
-    display: flex;
-    justify-content: space-between;
-    padding: 6px 0;
-    font-size: 13px;
-    border-bottom: 1px solid rgba(55, 65, 81, 0.3);
-  }
-  .inspector-key { color: var(--text-secondary); }
-  .inspector-value { color: var(--text-primary); font-family: var(--font-mono); font-size: 12px; }
-
-  /* ===== EMPTY STATE ===== */
-  .empty-state {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    padding: 64px 32px;
-    color: var(--text-secondary);
-    text-align: center;
-  }
-  .empty-state svg { width: 48px; height: 48px; margin-bottom: 16px; opacity: 0.5; }
-  .empty-state .empty-title {
-    font-size: 16px;
-    font-weight: 600;
-    color: var(--text-primary);
-    margin-bottom: 8px;
-  }
-  .empty-state .empty-desc {
-    font-size: 13px;
-    margin-bottom: 16px;
-    max-width: 320px;
-  }
-
-  /* ===== TOAST ===== */
-  .toast-container {
-    position: fixed;
-    bottom: 24px;
-    right: 24px;
-    z-index: 100;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .toast {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 12px 16px;
-    border-radius: 8px;
-    font-size: 13px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-    min-width: 280px;
-  }
-  .toast svg { width: 18px; height: 18px; flex-shrink: 0; }
-  .toast.success {
-    background: rgba(34, 197, 94, 0.15);
-    border: 1px solid rgba(34, 197, 94, 0.3);
-    color: var(--color-success);
-  }
-  .toast.error {
-    background: rgba(239, 68, 68, 0.15);
-    border: 1px solid rgba(239, 68, 68, 0.3);
-    color: var(--color-error);
-  }
-
-  /* ===== STORE ADMIN ===== */
-  .store-list {
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-  }
-  .store-item {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 16px;
-    background: var(--surface-elevated);
-    border: 1px solid var(--surface-border);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.15s;
-  }
-  .store-item:hover { border-color: var(--color-info); }
-  .store-item.active { border-color: var(--color-info); background: rgba(59, 130, 246, 0.08); }
-  .store-name { font-weight: 500; }
-  .store-id { font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); }
-  .store-date { font-size: 12px; color: var(--text-secondary); }
-  .store-actions { display: flex; gap: 8px; }
-
-  /* ===== HEADER STATES ===== */
-  .header-state-demo {
-    display: flex;
-    flex-direction: column;
-    gap: 24px;
-    padding: 24px;
-  }
-  .state-label {
-    font-size: 12px;
-    font-weight: 600;
-    color: var(--color-info);
-    text-transform: uppercase;
-    letter-spacing: 0.1em;
-    margin-bottom: 8px;
-  }
-
-  /* Responsive content area */
-  .content-with-inspector {
-    position: relative;
-    flex: 1;
-    overflow: hidden;
-  }
-
-  /* Confirm dialog */
-  .dialog-overlay {
-    position: fixed;
-    inset: 0;
-    background: rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 200;
-  }
-  .dialog {
-    background: var(--surface-card);
-    border: 1px solid var(--surface-border);
-    border-radius: 12px;
-    padding: 24px;
-    max-width: 400px;
-    width: 100%;
-  }
-  .dialog-title {
-    font-size: 16px;
-    font-weight: 600;
-    margin-bottom: 8px;
-  }
-  .dialog-body {
-    font-size: 13px;
-    color: var(--text-secondary);
-    margin-bottom: 20px;
-  }
-  .dialog-actions {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
-  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8fafc; }
+  .direction-tab { cursor: pointer; transition: all 0.2s; }
+  .direction-tab.active { background: #1e293b; color: #fff; }
+  .direction-tab:not(.active):hover { background: #e2e8f0; }
+  .view-tab { cursor: pointer; transition: all 0.15s; border-bottom: 2px solid transparent; }
+  .view-tab.active { border-bottom-color: #3b82f6; color: #1e293b; font-weight: 600; }
+  .view-tab:not(.active) { color: #64748b; }
+  .view-tab:not(.active):hover { color: #334155; }
+  .pill { background: #f1f5f9; border-radius: 4px; padding: 1px 6px; font-size: 0.875rem; }
+  .phase-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+  .fade-in { animation: fadeIn 0.3s ease-in; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .card-hover { transition: box-shadow 0.2s, transform 0.15s; }
+  .card-hover:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.08); transform: translateY(-1px); }
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
 </style>
 </head>
-<body>
+<body class="min-h-screen">
 
-<!-- MOCKUP NAVIGATION -->
-<div class="mockup-nav">
-  <span class="nav-label">OpenFGA Viewer — Design Direction:</span>
-  <button class="active" onclick="showMockup('query')">Query Console</button>
-  <button onclick="showMockup('model')">Model Viewer</button>
-  <button onclick="showMockup('tuples')">Tuple Manager</button>
-  <button onclick="showMockup('stores')">Store Admin</button>
-  <button onclick="showMockup('header-states')">Header States</button>
-  <button onclick="showMockup('components')">Components</button>
-</div>
-
-<!-- ===== MOCKUP 1: QUERY CONSOLE ===== -->
-<div id="mockup-query" class="mockup-section active">
-  <div class="app-shell">
-    <div class="app-header">
-      <div class="app-logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        OpenFGA Viewer
+<!-- Top Navigation -->
+<div class="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+  <div class="max-w-[1600px] mx-auto px-6 py-4">
+    <div class="flex items-center justify-between">
+      <div>
+        <h1 class="text-xl font-bold text-gray-900">Test Suite Module — Design Directions</h1>
+        <p class="text-sm text-gray-500 mt-1">openfga-viewer — Authorization Test Suite Management</p>
       </div>
-      <div class="header-spacer"></div>
-      <div class="connection-badge">
-        <span class="dot"></span>
-        Connected
-      </div>
-      <div class="store-selector">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
-        production-store
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+      <div class="flex gap-2">
+        <button onclick="showDirection('a')" id="tab-a" class="direction-tab active px-4 py-2 rounded-lg text-sm font-medium">A: Dashboard First</button>
+        <button onclick="showDirection('b')" id="tab-b" class="direction-tab px-4 py-2 rounded-lg text-sm font-medium bg-gray-100">B: Editor First</button>
+        <button onclick="showDirection('c')" id="tab-c" class="direction-tab px-4 py-2 rounded-lg text-sm font-medium bg-gray-100">C: Hybrid</button>
       </div>
     </div>
-    <div class="app-body">
-      <div class="app-sidebar">
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/></svg>
-          <span class="nav-label">Model Viewer</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><rect x="4" y="8" width="16" height="8" rx="1"/></svg>
-          <span class="nav-label">Tuple Manager</span>
-        </div>
-        <div class="nav-item active">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <span class="nav-label">Query Console</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 3v3m0 12v3m-9-9h3m12 0h3m-2.6-6.4-2.1 2.1M7.7 16.3l-2.1 2.1m0-12.8 2.1 2.1m8.5 8.5 2.1 2.1"/></svg>
-          <span class="nav-label">Relationship Graph</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg>
-          <span class="nav-label">Store Admin</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span class="nav-label">Import / Export</span>
+  </div>
+</div>
+
+<!-- Shared Viewer Shell -->
+<div class="max-w-[1600px] mx-auto flex" style="height: calc(100vh - 73px);">
+
+  <!-- Sidebar -->
+  <div class="w-14 bg-gray-900 flex flex-col items-center py-4 gap-4 shrink-0">
+    <div class="w-8 h-8 bg-blue-500 rounded flex items-center justify-center text-white text-xs font-bold">FGA</div>
+    <div class="w-8 h-8 rounded flex items-center justify-center text-gray-500 hover:text-gray-300 cursor-pointer" title="Stores">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"></path></svg>
+    </div>
+    <div class="w-8 h-8 rounded flex items-center justify-center text-gray-500 hover:text-gray-300 cursor-pointer" title="Tuples">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+    </div>
+    <div class="w-8 h-8 rounded flex items-center justify-center text-gray-500 hover:text-gray-300 cursor-pointer" title="Graph">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+    </div>
+    <div class="w-8 h-8 bg-gray-800 rounded flex items-center justify-center text-blue-400 cursor-pointer" title="Test Suites (active)">
+      <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+    </div>
+  </div>
+
+  <!-- Main Content Area -->
+  <div class="flex-1 overflow-hidden bg-gray-50">
+
+    <!-- DIRECTION A: Dashboard First -->
+    <div id="direction-a" class="h-full overflow-y-auto">
+      <div class="bg-white border-b border-gray-200 px-6">
+        <div class="flex gap-6 pt-3">
+          <button class="view-tab active pb-3 text-sm" onclick="showViewA('list')">Suite List</button>
+          <button class="view-tab pb-3 text-sm" onclick="showViewA('editor')">Suite Editor</button>
+          <button class="view-tab pb-3 text-sm" onclick="showViewA('results')">Run Results</button>
         </div>
       </div>
-      <div class="app-content">
-        <h1 class="page-title">Query Console</h1>
-        <div class="card">
-          <div class="tabs">
-            <div class="tab active">Check</div>
-            <div class="tab">List Objects</div>
-            <div class="tab">List Users</div>
-            <div class="tab">Expand</div>
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <span class="form-label">User</span>
-              <input class="form-input" type="text" value="user:marco" placeholder="user:...">
-            </div>
-            <div class="form-group">
-              <span class="form-label">Relation</span>
-              <select class="form-select">
-                <option>viewer</option>
-                <option>editor</option>
-                <option>owner</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <span class="form-label">Object</span>
-              <input class="form-input" type="text" value="document:specs" placeholder="type:id">
-            </div>
-            <button class="btn btn-primary">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5,3 19,12 5,21"/></svg>
-              Check
-            </button>
-          </div>
 
-          <!-- ALLOWED RESULT -->
-          <div class="query-result allowed">
-            <div class="result-icon allowed">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20,6 9,17 4,12"/></svg>
+      <!-- A: Suite List (Card Grid) -->
+      <div id="a-list" class="p-6 fade-in">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h2 class="text-lg font-semibold text-gray-900">Test Suites</h2>
+            <p class="text-sm text-gray-500 mt-1">3 suites across 2 stores</p>
+          </div>
+          <div class="flex gap-3">
+            <input type="text" placeholder="Search suites..." class="px-3 py-2 border border-gray-300 rounded-lg text-sm w-64 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <button class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">+ New Suite</button>
+          </div>
+        </div>
+        <div class="grid grid-cols-3 gap-4">
+          <div class="bg-white rounded-xl border border-gray-200 p-6 card-hover cursor-pointer">
+            <div class="flex items-start justify-between mb-3">
+              <h3 class="font-semibold text-gray-900">RBAC Core Permissions</h3>
+              <span class="inline-flex items-center gap-1 px-2 py-1 bg-green-50 text-green-700 text-xs font-medium rounded-full">
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                12/12
+              </span>
             </div>
-            <div class="result-text allowed">Allowed</div>
-            <div class="result-detail">user:marco can viewer document:specs — 47ms</div>
-            <button class="why-btn" onclick="document.getElementById('why-panel').style.display = document.getElementById('why-panel').style.display === 'none' ? 'block' : 'none'">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-              Why?
-            </button>
-            <div id="why-panel" class="why-expansion">
-              <div style="font-size: 12px; color: var(--text-secondary); margin-bottom: 12px; font-weight: 500;">Resolution Path</div>
-              <div class="resolution-path">
-                <span class="path-node user">user:marco</span>
-                <span class="path-arrow">→</span>
-                <span class="path-relation">member of</span>
-                <span class="path-arrow">→</span>
-                <span class="path-node group">team:backend</span>
-                <span class="path-arrow">→</span>
-                <span class="path-relation">viewer</span>
-                <span class="path-arrow">→</span>
-                <span class="path-node resource">document:specs</span>
+            <p class="text-sm text-gray-500 mb-4">Core role-based access control assertions for the document management system</p>
+            <div class="flex items-center gap-2 mb-3">
+              <span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">rbac</span>
+              <span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">core</span>
+              <span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">documents</span>
+            </div>
+            <div class="flex items-center justify-between text-xs text-gray-400">
+              <span>3 groups, 12 tests</span>
+              <span>Last run: 2 min ago</span>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-6 card-hover cursor-pointer">
+            <div class="flex items-start justify-between mb-3">
+              <h3 class="font-semibold text-gray-900">Organization Hierarchy</h3>
+              <span class="inline-flex items-center gap-1 px-2 py-1 bg-red-50 text-red-700 text-xs font-medium rounded-full">
+                <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                8/10
+              </span>
+            </div>
+            <p class="text-sm text-gray-500 mb-4">Hierarchical organization access with team inheritance and admin overrides</p>
+            <div class="flex items-center gap-2 mb-3">
+              <span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">hierarchy</span>
+              <span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">orgs</span>
+            </div>
+            <div class="flex items-center justify-between text-xs text-gray-400">
+              <span>2 groups, 10 tests</span>
+              <span>Last run: 15 min ago</span>
+            </div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 p-6 card-hover cursor-pointer">
+            <div class="flex items-start justify-between mb-3">
+              <h3 class="font-semibold text-gray-900">Sharing & Collaboration</h3>
+              <span class="inline-flex items-center gap-1 px-2 py-1 bg-gray-100 text-gray-500 text-xs font-medium rounded-full">Never run</span>
+            </div>
+            <p class="text-sm text-gray-500 mb-4">Document sharing permissions including public links, team shares, and external collaborators</p>
+            <div class="flex items-center gap-2 mb-3">
+              <span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">sharing</span>
+              <span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">collab</span>
+            </div>
+            <div class="flex items-center justify-between text-xs text-gray-400">
+              <span>4 groups, 18 tests</span>
+              <span>Created: 1 hour ago</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- A: Editor -->
+      <div id="a-editor" class="hidden fade-in" style="height: calc(100% - 45px);">
+        <div class="flex h-full">
+          <div class="w-72 bg-white border-r border-gray-200 overflow-y-auto shrink-0">
+            <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 class="font-semibold text-sm text-gray-900">RBAC Core Permissions</h3>
+            </div>
+            <div class="p-2">
+              <div class="mb-1">
+                <div class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <svg class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"></path></svg>
+                  <span class="text-sm font-medium text-gray-700">Viewer Permissions</span>
+                  <span class="ml-auto text-xs text-green-600">4/4</span>
+                </div>
+                <div class="ml-6 space-y-0.5">
+                  <div class="flex items-center gap-2 px-3 py-1.5 rounded text-sm bg-blue-50 text-blue-700 cursor-pointer">
+                    <svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                    alice can view budget
+                  </div>
+                  <div class="flex items-center gap-2 px-3 py-1.5 rounded text-sm text-gray-600 hover:bg-gray-50 cursor-pointer">
+                    <svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                    bob can view readme
+                  </div>
+                  <div class="flex items-center gap-2 px-3 py-1.5 rounded text-sm text-gray-600 hover:bg-gray-50 cursor-pointer">
+                    <svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                    charlie cannot view secret
+                  </div>
+                </div>
+              </div>
+              <div class="mb-1">
+                <div class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <svg class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"></path></svg>
+                  <span class="text-sm font-medium text-gray-700">Editor Permissions</span>
+                  <span class="ml-auto text-xs text-green-600">4/4</span>
+                </div>
+              </div>
+              <div class="mb-1">
+                <div class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer">
+                  <svg class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"></path></svg>
+                  <span class="text-sm font-medium text-gray-700">Owner Permissions</span>
+                  <span class="ml-auto text-xs text-green-600">4/4</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="flex-1 overflow-y-auto">
+            <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+              <div class="flex items-center gap-4">
+                <div class="flex gap-1 bg-gray-100 rounded-lg p-0.5">
+                  <button class="px-3 py-1.5 text-sm font-medium bg-white rounded-md shadow-sm">Form</button>
+                  <button class="px-3 py-1.5 text-sm text-gray-500">JSON</button>
+                </div>
+                <span class="text-xs text-green-600 flex items-center gap-1">
+                  <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                  JSON synced
+                </span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-green-50 text-green-700 text-sm font-medium rounded-lg">
+                  <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                  12/12 passed
+                </span>
+                <button class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2">
+                  <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg>
+                  Run Suite
+                </button>
+              </div>
+            </div>
+            <div class="p-6">
+              <div class="bg-white rounded-xl border border-blue-200 p-6 shadow-sm">
+                <div class="flex items-center justify-between mb-4">
+                  <span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Test Case — Viewer Permissions #1</span>
+                  <button class="p-1 text-gray-400 hover:text-blue-600" title="Run this test">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg>
+                  </button>
+                </div>
+                <div class="bg-gray-50 rounded-lg px-4 py-3 mb-5 text-base text-gray-700">
+                  Can <span class="pill">user:alice</span> <span class="pill">view</span> <span class="pill">document:budget</span> ?
+                  <span class="ml-2 text-green-600 font-medium">→ Yes</span>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div><label class="block text-xs font-medium text-gray-500 mb-1.5">User</label><input type="text" value="user:alice" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"></div>
+                  <div><label class="block text-xs font-medium text-gray-500 mb-1.5">Relation</label><input type="text" value="viewer" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"></div>
+                  <div><label class="block text-xs font-medium text-gray-500 mb-1.5">Object</label><input type="text" value="document:budget" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"></div>
+                  <div><label class="block text-xs font-medium text-gray-500 mb-1.5">Expected</label>
+                    <div class="flex items-center gap-3 py-2">
+                      <button class="px-4 py-1.5 bg-green-100 text-green-700 rounded-lg text-sm font-medium border-2 border-green-300">Allowed</button>
+                      <button class="px-4 py-1.5 bg-gray-100 text-gray-500 rounded-lg text-sm border-2 border-transparent">Denied</button>
+                    </div>
+                  </div>
+                </div>
+                <details class="mt-4">
+                  <summary class="text-xs text-gray-400 cursor-pointer hover:text-gray-600">+ Metadata (description, tags, severity)</summary>
+                  <div class="grid grid-cols-3 gap-4 mt-3">
+                    <div class="col-span-2"><label class="block text-xs font-medium text-gray-500 mb-1.5">Description</label><input type="text" value="Alice should be able to view the budget document" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"></div>
+                    <div><label class="block text-xs font-medium text-gray-500 mb-1.5">Severity</label><select class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"><option>critical</option><option>warning</option><option selected>info</option></select></div>
+                  </div>
+                </details>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-  <div class="toast-container">
-    <div class="toast success">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>
-      Check query completed in 47ms
-    </div>
-  </div>
-</div>
 
-<!-- ===== MOCKUP 2: MODEL VIEWER ===== -->
-<div id="mockup-model" class="mockup-section">
-  <div class="app-shell">
-    <div class="app-header">
-      <div class="app-logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        OpenFGA Viewer
-      </div>
-      <div class="header-spacer"></div>
-      <div class="connection-badge"><span class="dot"></span>Connected</div>
-      <div class="store-selector">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
-        production-store
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-      </div>
-    </div>
-    <div class="app-body">
-      <div class="app-sidebar">
-        <div class="nav-item active">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/></svg>
-          <span class="nav-label">Model Viewer</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><rect x="4" y="8" width="16" height="8" rx="1"/></svg>
-          <span class="nav-label">Tuple Manager</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <span class="nav-label">Query Console</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 3v3m0 12v3m-9-9h3m12 0h3m-2.6-6.4-2.1 2.1M7.7 16.3l-2.1 2.1m0-12.8 2.1 2.1m8.5 8.5 2.1 2.1"/></svg>
-          <span class="nav-label">Relationship Graph</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg>
-          <span class="nav-label">Store Admin</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span class="nav-label">Import / Export</span>
-        </div>
-      </div>
-      <div class="app-content">
-        <h1 class="page-title">Model Viewer</h1>
-        <div class="card">
-          <div class="tabs">
-            <div class="tab active">DSL</div>
-            <div class="tab">Graph</div>
+      <!-- A: Results -->
+      <div id="a-results" class="hidden fade-in" style="height: calc(100% - 45px);">
+        <div class="p-6">
+          <div class="bg-white rounded-xl border border-gray-200 p-6 mb-6 flex items-center justify-between">
+            <div class="flex items-center gap-6">
+              <div class="text-center"><div class="text-3xl font-bold text-gray-900">8<span class="text-gray-400">/10</span></div><div class="text-xs text-gray-500 mt-1">passed</div></div>
+              <div class="h-12 w-px bg-gray-200"></div>
+              <div class="flex gap-4">
+                <div class="text-center"><span class="text-lg font-semibold text-green-600">8</span><div class="text-xs text-gray-500">pass</div></div>
+                <div class="text-center"><span class="text-lg font-semibold text-red-600">2</span><div class="text-xs text-gray-500">fail</div></div>
+              </div>
+              <div class="h-12 w-px bg-gray-200"></div>
+              <div class="text-sm text-gray-500">Duration: <span class="font-medium text-gray-700">4.2s</span></div>
+            </div>
+            <button class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">Re-run Suite</button>
           </div>
-          <div class="dsl-view">
-            <div class="dsl-header">
-              <span>authorization-model.fga</span>
-              <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-                Copy
-              </button>
+          <div class="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+            <h3 class="text-sm font-medium text-gray-700 mb-4">Run Timeline</h3>
+            <div class="space-y-3">
+              <div class="flex items-center gap-3"><span class="phase-dot bg-green-500"></span><span class="text-sm text-gray-700 font-medium">Provisioning</span><span class="text-xs text-gray-400 ml-auto">1.2s</span><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg></div>
+              <div class="flex items-center gap-3"><span class="phase-dot bg-green-500"></span><span class="text-sm text-gray-700 font-medium">Loading fixtures</span><span class="text-xs text-gray-400 ml-auto">0.8s</span><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg></div>
+              <div class="flex items-center gap-3"><span class="phase-dot bg-green-500"></span><span class="text-sm text-gray-700 font-medium">Running checks</span><span class="text-xs text-gray-400 ml-auto">1.8s</span><span class="text-xs text-gray-500">10/10</span><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg></div>
+              <div class="flex items-center gap-3"><span class="phase-dot bg-green-500"></span><span class="text-sm text-gray-700 font-medium">Cleanup</span><span class="text-xs text-gray-400 ml-auto">0.4s</span><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg></div>
             </div>
-            <div class="dsl-code">
-              <div class="dsl-line"><span class="line-num">1</span><span class="kw">model</span></div>
-              <div class="dsl-line"><span class="line-num">2</span>&nbsp;&nbsp;<span class="kw">schema</span> 1.1</div>
-              <div class="dsl-line"><span class="line-num">3</span></div>
-              <div class="dsl-line"><span class="line-num">4</span><span class="kw">type</span> <span class="type">user</span></div>
-              <div class="dsl-line"><span class="line-num">5</span></div>
-              <div class="dsl-line"><span class="line-num">6</span><span class="kw">type</span> <span class="type">team</span></div>
-              <div class="dsl-line"><span class="line-num">7</span>&nbsp;&nbsp;<span class="kw">relations</span></div>
-              <div class="dsl-line"><span class="line-num">8</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">define</span> <span class="rel">member</span>: [<span class="type">user</span>]</div>
-              <div class="dsl-line"><span class="line-num">9</span></div>
-              <div class="dsl-line"><span class="line-num">10</span><span class="kw">type</span> <span class="type">document</span></div>
-              <div class="dsl-line"><span class="line-num">11</span>&nbsp;&nbsp;<span class="kw">relations</span></div>
-              <div class="dsl-line"><span class="line-num">12</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">define</span> <span class="rel">owner</span>: [<span class="type">user</span>]</div>
-              <div class="dsl-line"><span class="line-num">13</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">define</span> <span class="rel">editor</span>: [<span class="type">user</span>, <span class="type">team</span><span class="op">#</span><span class="rel">member</span>] <span class="op">or</span> <span class="rel">owner</span></div>
-              <div class="dsl-line"><span class="line-num">14</span>&nbsp;&nbsp;&nbsp;&nbsp;<span class="kw">define</span> <span class="rel">viewer</span>: [<span class="type">user</span>, <span class="type">team</span><span class="op">#</span><span class="rel">member</span>] <span class="op">or</span> <span class="rel">editor</span></div>
+          </div>
+          <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div class="px-6 py-3 border-b border-gray-100 flex items-center justify-between"><h3 class="text-sm font-medium text-gray-700">Test Results</h3><span class="text-xs text-gray-400">Failures first</span></div>
+            <div class="px-6 py-4 border-b border-gray-100 bg-red-50/50">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                <span class="text-sm text-gray-700">Can <span class="pill">user:eve</span> <span class="pill">edit</span> <span class="pill">document:secret</span> ? → Expected: <span class="font-medium">No</span>, Got: <span class="font-medium text-red-600">Yes</span></span>
+                <span class="ml-auto text-xs text-gray-400">12ms</span>
+              </div>
             </div>
+            <div class="px-6 py-4 border-b border-gray-100 bg-red-50/50">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+                <span class="text-sm text-gray-700">Can <span class="pill">user:mallory</span> <span class="pill">delete</span> <span class="pill">document:budget</span> ? → Expected: <span class="font-medium">No</span>, Got: <span class="font-medium text-red-600">Yes</span></span>
+                <span class="ml-auto text-xs text-gray-400">8ms</span>
+              </div>
+            </div>
+            <div class="px-6 py-4 border-b border-gray-100">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                <span class="text-sm text-gray-700">Can <span class="pill">user:alice</span> <span class="pill">view</span> <span class="pill">document:budget</span> ? → <span class="text-green-600 font-medium">Yes</span></span>
+                <span class="ml-auto text-xs text-gray-400">5ms</span>
+              </div>
+            </div>
+            <div class="px-6 py-4 border-b border-gray-100">
+              <div class="flex items-center gap-3">
+                <svg class="w-4 h-4 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>
+                <span class="text-sm text-gray-700">Can <span class="pill">user:bob</span> <span class="pill">view</span> <span class="pill">document:readme</span> ? → <span class="text-green-600 font-medium">Yes</span></span>
+                <span class="ml-auto text-xs text-gray-400">4ms</span>
+              </div>
+            </div>
+            <div class="px-6 py-3 text-center"><button class="text-xs text-gray-400 hover:text-gray-600">Show 6 more passed tests...</button></div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- ===== MOCKUP 3: TUPLE MANAGER ===== -->
-<div id="mockup-tuples" class="mockup-section">
-  <div class="app-shell">
-    <div class="app-header">
-      <div class="app-logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        OpenFGA Viewer
-      </div>
-      <div class="header-spacer"></div>
-      <div class="connection-badge"><span class="dot"></span>Connected</div>
-      <div class="store-selector">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
-        production-store
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-      </div>
-    </div>
-    <div class="app-body">
-      <div class="app-sidebar">
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/></svg>
-          <span class="nav-label">Model Viewer</span>
-        </div>
-        <div class="nav-item active">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><rect x="4" y="8" width="16" height="8" rx="1"/></svg>
-          <span class="nav-label">Tuple Manager</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <span class="nav-label">Query Console</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 3v3m0 12v3m-9-9h3m12 0h3"/></svg>
-          <span class="nav-label">Relationship Graph</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg>
-          <span class="nav-label">Store Admin</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span class="nav-label">Import / Export</span>
+    <!-- DIRECTION B: Editor First -->
+    <div id="direction-b" class="hidden h-full overflow-y-auto">
+      <div class="bg-white border-b border-gray-200 px-6">
+        <div class="flex gap-6 pt-3">
+          <button class="view-tab active pb-3 text-sm" onclick="showViewB('list')">Suites</button>
+          <button class="view-tab pb-3 text-sm" onclick="showViewB('editor')">Editor</button>
+          <button class="view-tab pb-3 text-sm" onclick="showViewB('results')">Results</button>
         </div>
       </div>
-      <div class="app-content">
-        <h1 class="page-title">Tuple Manager</h1>
-        <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <div class="filter-bar">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16" style="color: var(--text-secondary)"><polygon points="22,3 2,3 10,12.46 10,19 14,21 14,12.46"/></svg>
-              <input class="filter-input" placeholder="Filter by type..." value="document">
-              <input class="filter-input" placeholder="Filter by relation...">
-              <input class="filter-input" placeholder="Filter by user...">
-            </div>
-            <div style="display: flex; gap: 8px;">
-              <button class="btn btn-danger" style="font-size: 12px; padding: 6px 12px;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                Delete Selected (2)
-              </button>
-              <button class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                Add Tuple
-              </button>
-            </div>
-          </div>
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th style="width: 40px;"><input type="checkbox" class="checkbox"></th>
-                <th>User</th>
-                <th>Relation</th>
-                <th>Object</th>
-                <th style="width: 80px;">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><input type="checkbox" class="checkbox" checked></td>
-                <td class="mono">user:marco</td>
-                <td>viewer</td>
-                <td class="mono">document:specs</td>
-                <td><button class="btn btn-danger" style="padding: 2px 8px; font-size: 11px;">Delete</button></td>
-              </tr>
-              <tr>
-                <td><input type="checkbox" class="checkbox" checked></td>
-                <td class="mono">user:sara</td>
-                <td>editor</td>
-                <td class="mono">document:roadmap</td>
-                <td><button class="btn btn-danger" style="padding: 2px 8px; font-size: 11px;">Delete</button></td>
-              </tr>
-              <tr>
-                <td><input type="checkbox" class="checkbox"></td>
-                <td class="mono">team:backend#member</td>
-                <td>viewer</td>
-                <td class="mono">document:specs</td>
-                <td><button class="btn btn-danger" style="padding: 2px 8px; font-size: 11px;">Delete</button></td>
-              </tr>
-              <tr>
-                <td><input type="checkbox" class="checkbox"></td>
-                <td class="mono">user:lucia</td>
-                <td>owner</td>
-                <td class="mono">document:architecture</td>
-                <td><button class="btn btn-danger" style="padding: 2px 8px; font-size: 11px;">Delete</button></td>
-              </tr>
-              <tr>
-                <td><input type="checkbox" class="checkbox"></td>
-                <td class="mono">team:platform#member</td>
-                <td>editor</td>
-                <td class="mono">document:roadmap</td>
-                <td><button class="btn btn-danger" style="padding: 2px 8px; font-size: 11px;">Delete</button></td>
-              </tr>
+
+      <!-- B: Suite List (Compact Table) -->
+      <div id="b-list" class="p-6 fade-in">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-lg font-semibold text-gray-900">Test Suites</h2>
+          <button class="px-3 py-1.5 bg-blue-600 text-white rounded text-sm font-medium hover:bg-blue-700">+ New</button>
+        </div>
+        <div class="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <table class="w-full">
+            <thead class="bg-gray-50"><tr class="text-xs text-gray-500 uppercase tracking-wide"><th class="px-4 py-3 text-left font-medium">Name</th><th class="px-4 py-3 text-left font-medium">Tags</th><th class="px-4 py-3 text-center font-medium">Tests</th><th class="px-4 py-3 text-center font-medium">Last Run</th><th class="px-4 py-3 text-right font-medium">Actions</th></tr></thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr class="hover:bg-gray-50 cursor-pointer"><td class="px-4 py-3"><div class="font-medium text-sm text-gray-900">RBAC Core Permissions</div><div class="text-xs text-gray-500">Core role-based access control</div></td><td class="px-4 py-3"><div class="flex gap-1"><span class="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">rbac</span><span class="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">core</span></div></td><td class="px-4 py-3 text-center text-sm text-gray-600">12</td><td class="px-4 py-3 text-center"><span class="inline-flex items-center gap-1 text-xs text-green-600 font-medium"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>12/12</span></td><td class="px-4 py-3 text-right"><button class="text-xs text-blue-600 hover:text-blue-800 font-medium">Edit</button><button class="text-xs text-gray-400 hover:text-gray-600 ml-3">Run</button></td></tr>
+              <tr class="hover:bg-gray-50 cursor-pointer"><td class="px-4 py-3"><div class="font-medium text-sm text-gray-900">Organization Hierarchy</div><div class="text-xs text-gray-500">Hierarchical org access</div></td><td class="px-4 py-3"><div class="flex gap-1"><span class="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">hierarchy</span></div></td><td class="px-4 py-3 text-center text-sm text-gray-600">10</td><td class="px-4 py-3 text-center"><span class="inline-flex items-center gap-1 text-xs text-red-600 font-medium"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>8/10</span></td><td class="px-4 py-3 text-right"><button class="text-xs text-blue-600 hover:text-blue-800 font-medium">Edit</button><button class="text-xs text-gray-400 hover:text-gray-600 ml-3">Run</button></td></tr>
+              <tr class="hover:bg-gray-50 cursor-pointer"><td class="px-4 py-3"><div class="font-medium text-sm text-gray-900">Sharing & Collaboration</div><div class="text-xs text-gray-500">Document sharing permissions</div></td><td class="px-4 py-3"><div class="flex gap-1"><span class="px-1.5 py-0.5 bg-gray-100 text-gray-600 text-xs rounded">sharing</span></div></td><td class="px-4 py-3 text-center text-sm text-gray-600">18</td><td class="px-4 py-3 text-center"><span class="text-xs text-gray-400">Never run</span></td><td class="px-4 py-3 text-right"><button class="text-xs text-blue-600 hover:text-blue-800 font-medium">Edit</button><button class="text-xs text-gray-400 hover:text-gray-600 ml-3">Run</button></td></tr>
             </tbody>
           </table>
-          <div class="pagination">
-            <span>Showing 1-5 of 847 tuples</span>
-            <div style="display: flex; gap: 4px;">
-              <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">Previous</button>
-              <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">Next</button>
-            </div>
-          </div>
         </div>
       </div>
-    </div>
-  </div>
-</div>
 
-<!-- ===== MOCKUP 4: STORE ADMIN ===== -->
-<div id="mockup-stores" class="mockup-section">
-  <div class="app-shell">
-    <div class="app-header">
-      <div class="app-logo">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-        OpenFGA Viewer
-      </div>
-      <div class="header-spacer"></div>
-      <div class="connection-badge"><span class="dot"></span>Connected</div>
-      <div class="store-selector">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
-        production-store
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-      </div>
-    </div>
-    <div class="app-body">
-      <div class="app-sidebar">
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14,2 14,8 20,8"/></svg>
-          <span class="nav-label">Model Viewer</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18"/><rect x="4" y="8" width="16" height="8" rx="1"/></svg>
-          <span class="nav-label">Tuple Manager</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
-          <span class="nav-label">Query Console</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 3v3m0 12v3m-9-9h3m12 0h3"/></svg>
-          <span class="nav-label">Relationship Graph</span>
-        </div>
-        <div class="nav-item active">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg>
-          <span class="nav-label">Store Admin</span>
-        </div>
-        <div class="nav-item">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          <span class="nav-label">Import / Export</span>
-        </div>
-      </div>
-      <div class="app-content">
-        <h1 class="page-title">Store Administration</h1>
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-          <span style="color: var(--text-secondary); font-size: 13px;">3 stores on this instance</span>
-          <button class="btn btn-primary" style="font-size: 12px; padding: 6px 12px;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Create Store
-          </button>
-        </div>
-        <div class="store-list">
-          <div class="store-item active">
-            <div>
-              <div class="store-name">production-store</div>
-              <div class="store-id">01HXYZ123456789ABCDEF</div>
+      <!-- B: Editor (equal split) -->
+      <div id="b-editor" class="hidden fade-in" style="height: calc(100% - 45px);">
+        <div class="flex h-full">
+          <div class="w-1/2 bg-white border-r border-gray-200 overflow-y-auto">
+            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+              <h3 class="font-semibold text-sm text-gray-900">RBAC Core Permissions</h3>
+              <div class="flex items-center gap-2"><span class="text-xs text-green-600 font-medium">12/12</span><button class="px-3 py-1 bg-blue-600 text-white rounded text-xs font-medium">Run All</button></div>
             </div>
-            <div style="display: flex; align-items: center; gap: 16px;">
-              <div class="store-date">Created: 2026-01-15</div>
-              <div class="store-actions">
-                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  Backup
-                </button>
-                <button class="btn btn-danger" style="padding: 4px 10px; font-size: 11px;">Delete</button>
+            <div class="p-4 space-y-4">
+              <div>
+                <div class="flex items-center justify-between mb-2"><span class="text-sm font-medium text-gray-700">Viewer Permissions</span><button class="text-gray-400 hover:text-blue-600"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg></button></div>
+                <div class="space-y-2 ml-2">
+                  <div class="flex items-center gap-2 p-2 rounded-lg bg-blue-50 border border-blue-200 cursor-pointer"><svg class="w-3.5 h-3.5 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span class="text-sm text-gray-700">Can <span class="pill">user:alice</span> <span class="pill">view</span> <span class="pill">document:budget</span> ? → <span class="text-green-600">Yes</span></span></div>
+                  <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 cursor-pointer"><svg class="w-3.5 h-3.5 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span class="text-sm text-gray-700">Can <span class="pill">user:bob</span> <span class="pill">view</span> <span class="pill">document:readme</span> ? → <span class="text-green-600">Yes</span></span></div>
+                  <div class="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-50 cursor-pointer"><svg class="w-3.5 h-3.5 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span class="text-sm text-gray-700">Can <span class="pill">user:charlie</span> <span class="pill">view</span> <span class="pill">document:secret</span> ? → <span class="text-green-600">No</span></span></div>
+                </div>
               </div>
             </div>
           </div>
-          <div class="store-item">
-            <div>
-              <div class="store-name">staging-store</div>
-              <div class="store-id">01HXYZ987654321FEDCBA</div>
+          <div class="w-1/2 overflow-y-auto">
+            <div class="p-4 border-b border-gray-200 flex items-center justify-between">
+              <div class="flex gap-1 bg-gray-100 rounded p-0.5"><button class="px-3 py-1 text-xs font-medium bg-white rounded shadow-sm">Form</button><button class="px-3 py-1 text-xs text-gray-500">JSON</button></div>
+              <span class="text-xs text-green-600 flex items-center gap-1"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>Synced</span>
             </div>
-            <div style="display: flex; align-items: center; gap: 16px;">
-              <div class="store-date">Created: 2026-02-10</div>
-              <div class="store-actions">
-                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  Backup
-                </button>
-                <button class="btn btn-danger" style="padding: 4px 10px; font-size: 11px;">Delete</button>
-              </div>
-            </div>
-          </div>
-          <div class="store-item">
-            <div>
-              <div class="store-name">dev-local</div>
-              <div class="store-id">01HXYZAABBCCDD112233</div>
-            </div>
-            <div style="display: flex; align-items: center; gap: 16px;">
-              <div class="store-date">Created: 2026-03-20</div>
-              <div class="store-actions">
-                <button class="btn btn-secondary" style="padding: 4px 10px; font-size: 11px;">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7,10 12,15 17,10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                  Backup
-                </button>
-                <button class="btn btn-danger" style="padding: 4px 10px; font-size: 11px;">Delete</button>
+            <div class="p-6">
+              <div class="bg-gray-50 rounded-lg px-4 py-3 mb-5 text-base text-gray-700">Can <span class="pill">user:alice</span> <span class="pill">view</span> <span class="pill">document:budget</span> ? <span class="ml-2 text-green-600 font-medium">→ Yes</span></div>
+              <div class="space-y-4">
+                <div><label class="block text-xs font-medium text-gray-500 mb-1">User</label><input type="text" value="user:alice" class="w-full px-3 py-2 border border-gray-300 rounded text-sm"></div>
+                <div><label class="block text-xs font-medium text-gray-500 mb-1">Relation</label><input type="text" value="viewer" class="w-full px-3 py-2 border border-gray-300 rounded text-sm"></div>
+                <div><label class="block text-xs font-medium text-gray-500 mb-1">Object</label><input type="text" value="document:budget" class="w-full px-3 py-2 border border-gray-300 rounded text-sm"></div>
+                <div><label class="block text-xs font-medium text-gray-500 mb-1">Expected</label><div class="flex gap-2"><button class="px-3 py-1 bg-green-100 text-green-700 rounded text-sm font-medium border-2 border-green-300">Allowed</button><button class="px-3 py-1 bg-gray-100 text-gray-500 rounded text-sm border-2 border-transparent">Denied</button></div></div>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
-  </div>
-</div>
 
-<!-- ===== MOCKUP 5: HEADER STATES ===== -->
-<div id="mockup-header-states" class="mockup-section">
-  <div class="header-state-demo">
-    <div>
-      <div class="state-label">State 1: Connected + Store Selected</div>
-      <div class="app-header" style="border-radius: 8px;">
-        <div class="app-logo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          OpenFGA Viewer
-        </div>
-        <div class="header-spacer"></div>
-        <div class="connection-badge"><span class="dot"></span>Connected</div>
-        <div class="store-selector">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
-          production-store
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-        </div>
-      </div>
-    </div>
-    <div>
-      <div class="state-label">State 2: Connected + No Store Selected</div>
-      <div class="app-header" style="border-radius: 8px;">
-        <div class="app-logo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          OpenFGA Viewer
-        </div>
-        <div class="header-spacer"></div>
-        <div class="connection-badge"><span class="dot"></span>Connected</div>
-        <div class="store-selector" style="border-color: var(--color-info); animation: pulse 2s infinite;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
-          <span style="color: var(--text-secondary);">Select a store...</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-        </div>
-      </div>
-      <style>@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }</style>
-    </div>
-    <div>
-      <div class="state-label">State 3: Disconnected / Error</div>
-      <div class="app-header" style="border-radius: 8px;">
-        <div class="app-logo">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-          OpenFGA Viewer
-        </div>
-        <div class="header-spacer"></div>
-        <div class="connection-badge error"><span class="dot"></span>Connection Error</div>
-        <div class="store-selector" style="opacity: 0.4; cursor: not-allowed;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4.03 3 9 3s9-1.34 9-3"/></svg>
-          <span style="color: var(--text-secondary);">—</span>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
-        </div>
-      </div>
-    </div>
-    <div>
-      <div class="state-label">Empty State Example: No Store Selected</div>
-      <div class="card">
-        <div class="empty-state">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4.03 3 9 3s9-1.34 9-3V5"/></svg>
-          <div class="empty-title">No store selected</div>
-          <div class="empty-desc">Select a store from the header or visit Store Admin to create one.</div>
-          <button class="btn btn-primary">Go to Store Admin</button>
-        </div>
-      </div>
-    </div>
-    <div>
-      <div class="state-label">Confirm Dialog: Destructive Action</div>
-      <div style="position: relative; height: 200px; background: var(--surface-base); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-        <div class="dialog" style="position: relative;">
-          <div class="dialog-title" style="color: var(--color-error);">Delete Store</div>
-          <div class="dialog-body">Are you sure you want to delete <strong style="color: var(--text-primary);">staging-store</strong>? This action cannot be undone. All models and tuples will be permanently removed.</div>
-          <div class="dialog-actions">
-            <button class="btn btn-secondary">Cancel</button>
-            <button class="btn btn-danger">Delete Store</button>
+      <!-- B: Results (list) -->
+      <div id="b-results" class="hidden fade-in" style="height: calc(100% - 45px);">
+        <div class="flex flex-col h-full">
+          <div class="bg-white border-b border-gray-200 p-4 flex items-center justify-between">
+            <div class="flex items-center gap-4"><h3 class="font-semibold text-sm">Organization Hierarchy</h3><span class="text-xs text-red-600 font-medium flex items-center gap-1"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>8/10 passed</span><span class="text-xs text-gray-400">4.2s</span></div>
+            <button class="px-3 py-1.5 bg-blue-600 text-white rounded text-xs font-medium">Re-run</button>
+          </div>
+          <div class="flex-1 overflow-y-auto bg-gray-50 p-4 space-y-1">
+            <div class="bg-white rounded border border-red-200 px-4 py-3 flex items-center gap-3"><svg class="w-4 h-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg><span class="text-sm">Can <span class="pill">user:eve</span> <span class="pill">edit</span> <span class="pill">document:secret</span> ? → Expected: <span class="font-medium">No</span>, Got: <span class="font-medium text-red-600">Yes</span></span><span class="ml-auto text-xs text-gray-400">12ms</span></div>
+            <div class="bg-white rounded border border-red-200 px-4 py-3 flex items-center gap-3"><svg class="w-4 h-4 text-red-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg><span class="text-sm">Can <span class="pill">user:mallory</span> <span class="pill">delete</span> <span class="pill">document:budget</span> ? → Expected: <span class="font-medium">No</span>, Got: <span class="font-medium text-red-600">Yes</span></span><span class="ml-auto text-xs text-gray-400">8ms</span></div>
+            <div class="bg-white rounded border border-gray-200 px-4 py-3 flex items-center gap-3"><svg class="w-4 h-4 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span class="text-sm text-gray-700">Can <span class="pill">user:alice</span> <span class="pill">view</span> <span class="pill">document:budget</span> ? → <span class="text-green-600 font-medium">Yes</span></span><span class="ml-auto text-xs text-gray-400">5ms</span></div>
+            <div class="bg-white rounded border border-gray-200 px-4 py-3 flex items-center gap-3"><svg class="w-4 h-4 text-green-500 shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span class="text-sm text-gray-700">Can <span class="pill">user:bob</span> <span class="pill">view</span> <span class="pill">document:readme</span> ? → <span class="text-green-600 font-medium">Yes</span></span><span class="ml-auto text-xs text-gray-400">4ms</span></div>
           </div>
         </div>
       </div>
     </div>
-  </div>
-</div>
 
-<!-- ===== MOCKUP 6: COMPONENTS ===== -->
-<div id="mockup-components" class="mockup-section">
-  <div style="padding: 24px; max-width: 900px; margin: 0 auto;">
-    <h1 class="page-title">Component Library</h1>
-
-    <div class="card">
-      <div class="card-header">Buttons</div>
-      <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-        <button class="btn btn-primary">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polygon points="5,3 19,12 5,21"/></svg>
-          Primary
-        </button>
-        <button class="btn btn-secondary">Secondary</button>
-        <button class="btn btn-danger">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="16" height="16"><polyline points="3,6 5,6 21,6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-          Danger
-        </button>
-        <button class="btn btn-success">Success</button>
-        <button class="btn btn-primary" style="opacity: 0.5; cursor: not-allowed;">Disabled</button>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header">Form Elements</div>
-      <div class="form-row">
-        <div class="form-group">
-          <span class="form-label">Text Input</span>
-          <input class="form-input" type="text" placeholder="Enter value...">
-        </div>
-        <div class="form-group">
-          <span class="form-label">Monospace Input</span>
-          <input class="form-input" type="text" value="user:alice" style="font-family: var(--font-mono);">
-        </div>
-        <div class="form-group">
-          <span class="form-label">Select</span>
-          <select class="form-select">
-            <option>viewer</option>
-            <option>editor</option>
-            <option>owner</option>
-          </select>
+    <!-- DIRECTION C: Hybrid (Recommended) -->
+    <div id="direction-c" class="hidden h-full overflow-y-auto">
+      <div class="bg-white border-b border-gray-200 px-6">
+        <div class="flex gap-6 pt-3">
+          <button class="view-tab active pb-3 text-sm" onclick="showViewC('list')">Suites</button>
+          <button class="view-tab pb-3 text-sm" onclick="showViewC('editor')">Editor</button>
         </div>
       </div>
-    </div>
 
-    <div class="card">
-      <div class="card-header">Badges</div>
-      <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-        <div class="connection-badge"><span class="dot"></span>Connected</div>
-        <div class="connection-badge error"><span class="dot"></span>Disconnected</div>
-        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: rgba(59, 130, 246, 0.15); color: #60a5fa; font-family: var(--font-mono);">user</span>
-        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: rgba(139, 92, 246, 0.15); color: #a78bfa; font-family: var(--font-mono);">document</span>
-        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: rgba(245, 158, 11, 0.15); color: #fbbf24; font-family: var(--font-mono);">team</span>
-        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 4px; font-size: 12px; background: rgba(16, 185, 129, 0.15); color: #34d399; font-family: var(--font-mono);">organization</span>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header">Tabs</div>
-      <div class="tabs">
-        <div class="tab active">Active Tab</div>
-        <div class="tab">Inactive Tab</div>
-        <div class="tab">Another Tab</div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="card-header">Query Results</div>
-      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-        <div class="query-result allowed" style="padding: 20px;">
-          <div class="result-icon allowed" style="width: 36px; height: 36px;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20"><polyline points="20,6 9,17 4,12"/></svg>
+      <!-- C: Suite List (Full-width cards) -->
+      <div id="c-list" class="p-6 fade-in">
+        <div class="flex items-center justify-between mb-6">
+          <div><h2 class="text-lg font-semibold text-gray-900">Test Suites</h2><p class="text-sm text-gray-500 mt-1">3 suites</p></div>
+          <div class="flex gap-3"><input type="text" placeholder="Search..." class="px-3 py-2 border border-gray-300 rounded-lg text-sm w-48"><button class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">+ New Suite</button></div>
+        </div>
+        <div class="space-y-4">
+          <div class="bg-white rounded-xl border border-gray-200 p-6 card-hover cursor-pointer flex items-center justify-between">
+            <div class="flex-1"><div class="flex items-center gap-3 mb-2"><h3 class="font-semibold text-gray-900">RBAC Core Permissions</h3><span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">rbac</span><span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">core</span></div><p class="text-sm text-gray-500">Core role-based access control assertions for the document management system</p><div class="text-xs text-gray-400 mt-2">3 groups, 12 tests — Last run: 2 min ago</div></div>
+            <div class="flex items-center gap-4 ml-6"><span class="inline-flex items-center gap-1.5 px-3 py-2 bg-green-50 text-green-700 text-sm font-medium rounded-lg"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>12/12</span><button class="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-gray-100" title="Run"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg></button></div>
           </div>
-          <div class="result-text allowed" style="font-size: 16px;">Allowed</div>
-          <div class="result-detail">47ms</div>
-        </div>
-        <div class="query-result denied" style="padding: 20px;">
-          <div class="result-icon denied" style="width: 36px; height: 36px;">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="20" height="20"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          <div class="bg-white rounded-xl border border-red-200 p-6 card-hover cursor-pointer flex items-center justify-between">
+            <div class="flex-1"><div class="flex items-center gap-3 mb-2"><h3 class="font-semibold text-gray-900">Organization Hierarchy</h3><span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">hierarchy</span><span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">orgs</span></div><p class="text-sm text-gray-500">Hierarchical organization access with team inheritance and admin overrides</p><div class="text-xs text-gray-400 mt-2">2 groups, 10 tests — Last run: 15 min ago</div></div>
+            <div class="flex items-center gap-4 ml-6"><span class="inline-flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-700 text-sm font-medium rounded-lg"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>8/10</span><button class="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-gray-100" title="Run"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg></button></div>
           </div>
-          <div class="result-text denied" style="font-size: 16px;">Denied</div>
-          <div class="result-detail">32ms</div>
+          <div class="bg-white rounded-xl border border-gray-200 p-6 card-hover cursor-pointer flex items-center justify-between">
+            <div class="flex-1"><div class="flex items-center gap-3 mb-2"><h3 class="font-semibold text-gray-900">Sharing & Collaboration</h3><span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">sharing</span><span class="px-2 py-0.5 bg-blue-50 text-blue-700 text-xs rounded">collab</span></div><p class="text-sm text-gray-500">Document sharing permissions including public links, team shares, and external collaborators</p><div class="text-xs text-gray-400 mt-2">4 groups, 18 tests — Created: 1 hour ago</div></div>
+            <div class="flex items-center gap-4 ml-6"><span class="inline-flex items-center gap-1 px-3 py-2 bg-gray-100 text-gray-500 text-sm font-medium rounded-lg">Never run</span><button class="p-2 text-gray-400 hover:text-blue-600 rounded-lg hover:bg-gray-100" title="Run"><svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg></button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- C: Editor (collapsible tree + integrated results) -->
+      <div id="c-editor" class="hidden fade-in" style="height: calc(100% - 45px);">
+        <div class="flex h-full">
+          <!-- Collapsible tree -->
+          <div id="c-tree" class="w-72 bg-white border-r border-gray-200 overflow-y-auto shrink-0 transition-all duration-200">
+            <div class="p-4 border-b border-gray-100 flex items-center justify-between">
+              <h3 class="font-semibold text-sm text-gray-900">Organization Hierarchy</h3>
+              <button onclick="toggleTree()" class="text-gray-400 hover:text-gray-600" title="Collapse"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path></svg></button>
+            </div>
+            <div class="p-2">
+              <div class="mb-1">
+                <div class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer"><svg class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"></path></svg><span class="text-sm font-medium text-gray-700">Team Access</span><span class="ml-auto text-xs text-red-600">3/5</span></div>
+                <div class="ml-6 space-y-0.5">
+                  <div class="flex items-center gap-2 px-3 py-1.5 rounded text-sm hover:bg-gray-50 cursor-pointer"><svg class="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg><span class="text-gray-700">eve cannot edit secret</span></div>
+                  <div class="flex items-center gap-2 px-3 py-1.5 rounded text-sm bg-blue-50 text-blue-700 cursor-pointer"><svg class="w-3 h-3 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg><span>mallory cannot delete budget</span></div>
+                  <div class="flex items-center gap-2 px-3 py-1.5 rounded text-sm hover:bg-gray-50 cursor-pointer"><svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span class="text-gray-700">alice can view budget</span></div>
+                  <div class="flex items-center gap-2 px-3 py-1.5 rounded text-sm hover:bg-gray-50 cursor-pointer"><svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span class="text-gray-700">bob can view readme</span></div>
+                  <div class="flex items-center gap-2 px-3 py-1.5 rounded text-sm hover:bg-gray-50 cursor-pointer"><svg class="w-3 h-3 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg><span class="text-gray-700">alice can edit budget</span></div>
+                </div>
+              </div>
+              <div class="mb-1">
+                <div class="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-gray-50 cursor-pointer"><svg class="w-3 h-3 text-gray-400" fill="currentColor" viewBox="0 0 20 20"><path d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"></path></svg><span class="text-sm font-medium text-gray-700">Admin Override</span><span class="ml-auto text-xs text-green-600">5/5</span></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Collapsed tree strip -->
+          <div id="c-tree-collapsed" class="hidden w-12 bg-white border-r border-gray-200 flex flex-col items-center py-4 gap-3 shrink-0">
+            <button onclick="toggleTree()" class="text-gray-400 hover:text-gray-600" title="Expand"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7"></path></svg></button>
+            <div class="w-8 h-8 rounded bg-red-50 flex items-center justify-center text-red-600 text-xs font-bold" title="Team Access: 3/5">3/5</div>
+            <div class="w-8 h-8 rounded bg-green-50 flex items-center justify-center text-green-600 text-xs font-bold" title="Admin Override: 5/5">5/5</div>
+          </div>
+
+          <!-- Editor right panel -->
+          <div class="flex-1 overflow-y-auto">
+            <div class="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10">
+              <div class="flex items-center gap-4">
+                <div class="flex gap-1 bg-gray-100 rounded-lg p-0.5"><button class="px-3 py-1.5 text-sm font-medium bg-white rounded-md shadow-sm">Form</button><button class="px-3 py-1.5 text-sm text-gray-500">JSON</button></div>
+                <span class="text-xs text-green-600 flex items-center gap-1"><svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg>JSON synced</span>
+              </div>
+              <div class="flex items-center gap-3">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-red-50 text-red-700 text-sm font-medium rounded-lg"><svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>8/10 passed</span>
+                <button class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 flex items-center gap-2"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg>Run Suite</button>
+              </div>
+            </div>
+            <div class="p-6">
+              <div class="bg-white rounded-xl border border-red-200 p-6 shadow-sm mb-6">
+                <div class="flex items-center justify-between mb-4"><span class="text-xs font-medium text-gray-400 uppercase tracking-wide">Test Case — Team Access #2</span><div class="flex items-center gap-2"><span class="text-xs text-red-600 font-medium">FAILED</span><button class="p-1 text-gray-400 hover:text-blue-600" title="Run this test"><svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path></svg></button></div></div>
+                <div class="bg-red-50 rounded-lg px-4 py-3 mb-5 text-base text-gray-700 border border-red-100">
+                  Can <span class="pill">user:mallory</span> <span class="pill">delete</span> <span class="pill">document:budget</span> ?
+                  <span class="ml-2">→ Expected: <span class="font-medium text-gray-900">No</span>, Got: <span class="font-medium text-red-600">Yes</span></span>
+                  <span class="ml-2 text-xs text-gray-400">8ms</span>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                  <div><label class="block text-xs font-medium text-gray-500 mb-1.5">User</label><input type="text" value="user:mallory" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"></div>
+                  <div><label class="block text-xs font-medium text-gray-500 mb-1.5">Relation</label><input type="text" value="can_delete" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"></div>
+                  <div><label class="block text-xs font-medium text-gray-500 mb-1.5">Object</label><input type="text" value="document:budget" class="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"></div>
+                  <div><label class="block text-xs font-medium text-gray-500 mb-1.5">Expected</label><div class="flex items-center gap-3 py-2"><button class="px-4 py-1.5 bg-gray-100 text-gray-500 rounded-lg text-sm border-2 border-transparent">Allowed</button><button class="px-4 py-1.5 bg-red-100 text-red-700 rounded-lg text-sm font-medium border-2 border-red-300">Denied</button></div></div>
+                </div>
+              </div>
+              <details class="bg-white rounded-xl border border-gray-200 mb-6">
+                <summary class="px-6 py-4 cursor-pointer text-sm font-medium text-gray-700 flex items-center justify-between"><span>Run Timeline</span><span class="text-xs text-gray-400">4.2s total</span></summary>
+                <div class="px-6 pb-4 space-y-3">
+                  <div class="flex items-center gap-3"><span class="phase-dot bg-green-500"></span><span class="text-sm text-gray-700">Provisioning</span><span class="text-xs text-gray-400 ml-auto">1.2s</span><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg></div>
+                  <div class="flex items-center gap-3"><span class="phase-dot bg-green-500"></span><span class="text-sm text-gray-700">Loading fixtures</span><span class="text-xs text-gray-400 ml-auto">0.8s</span><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg></div>
+                  <div class="flex items-center gap-3"><span class="phase-dot bg-green-500"></span><span class="text-sm text-gray-700">Running checks</span><span class="text-xs text-gray-400 ml-auto">1.8s</span><span class="text-xs text-gray-500">10/10</span><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg></div>
+                  <div class="flex items-center gap-3"><span class="phase-dot bg-green-500"></span><span class="text-sm text-gray-700">Cleanup</span><span class="text-xs text-gray-400 ml-auto">0.4s</span><svg class="w-4 h-4 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"></path></svg></div>
+                </div>
+              </details>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header">Toast Notifications</div>
-      <div style="display: flex; flex-direction: column; gap: 8px;">
-        <div class="toast success" style="position: relative;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20,6 9,17 4,12"/></svg>
-          Tuple added successfully
-        </div>
-        <div class="toast error" style="position: relative;">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-          Failed to connect: ECONNREFUSED
-        </div>
-      </div>
-    </div>
   </div>
 </div>
 
 <script>
-function showMockup(id) {
-  document.querySelectorAll('.mockup-section').forEach(s => s.classList.remove('active'));
-  document.querySelectorAll('.mockup-nav button').forEach(b => b.classList.remove('active'));
-  document.getElementById('mockup-' + id).classList.add('active');
-  event.target.classList.add('active');
+function showDirection(dir) {
+  ['a','b','c'].forEach(d => {
+    document.getElementById('direction-' + d).classList.toggle('hidden', d !== dir);
+    document.getElementById('tab-' + d).classList.toggle('active', d === dir);
+  });
+}
+function showViewA(view) {
+  ['list','editor','results'].forEach(v => { const el = document.getElementById('a-' + v); if (el) el.classList.toggle('hidden', v !== view); });
+  document.querySelectorAll('#direction-a .view-tab').forEach((tab, i) => { tab.classList.toggle('active', ['list','editor','results'][i] === view); });
+}
+function showViewB(view) {
+  ['list','editor','results'].forEach(v => { const el = document.getElementById('b-' + v); if (el) el.classList.toggle('hidden', v !== view); });
+  document.querySelectorAll('#direction-b .view-tab').forEach((tab, i) => { tab.classList.toggle('active', ['list','editor','results'][i] === view); });
+}
+function showViewC(view) {
+  ['list','editor'].forEach(v => { const el = document.getElementById('c-' + v); if (el) el.classList.toggle('hidden', v !== view); });
+  document.querySelectorAll('#direction-c .view-tab').forEach((tab, i) => { tab.classList.toggle('active', ['list','editor'][i] === view); });
+}
+function toggleTree() {
+  document.getElementById('c-tree').classList.toggle('hidden');
+  document.getElementById('c-tree-collapsed').classList.toggle('hidden');
 }
 </script>
 </body>

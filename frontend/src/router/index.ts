@@ -37,6 +37,11 @@ const router = createRouter({
       name: 'import-export',
       component: () => import('../views/ImportExport.vue'),
     },
+    {
+      path: '/test-suites',
+      name: 'test-suites',
+      component: () => import('../views/TestSuites.vue'),
+    },
   ],
 })
 

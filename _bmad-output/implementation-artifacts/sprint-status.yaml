@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-26
-last_updated: 2026-03-27T20:00:00Z
+last_updated: 2026-04-01T10:20:00Z
 project: openfga-viewer
 project_key: NOKEY
 tracking_system: file-system
@@ -84,3 +84,29 @@ development_status:
   6-1-export-and-backup-store-data: done
   6-2-import-and-restore-store-data: done
   epic-6-retrospective: done
+
+  # Epic 7: Suite Management
+  epic-7: done
+  7-1-suite-crud-api-and-postgresql-infrastructure: done
+  7-2-suite-list-ui-with-create-delete-and-empty-state: done
+  epic-7-retrospective: done
+
+  # Epic 8: Suite Editor
+  epic-8: done
+  8-1-suite-tree-and-form-editor: done
+  8-2-json-editor-and-dual-mode-sync: done
+  8-3-fixture-editor: done
+  epic-8-retrospective: done
+
+  # Epic 9: Test Execution & Results
+  epic-9: done
+  9-1-execution-engine-and-run-api: done
+  9-2-run-ui-and-phase-timeline: done
+  9-3-results-display-and-suite-list-integration: done
+  epic-9-retrospective: done
+
+  # Epic 10: Import, Export & CI Integration
+  epic-10: done
+  10-1-export-suite-and-ci-integration-snippet: done
+  10-2-import-suite-with-validation-preview: done
+  epic-10-retrospective: done

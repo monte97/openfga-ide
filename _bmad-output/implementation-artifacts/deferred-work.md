@@ -1,5 +1,73 @@
 # Deferred Work
 
+## Deferred from: code review of 10-2-import-suite-with-validation-preview (2026-04-01)
+
+- **`ZodIssue` type alias duplicated** — `ImportJsonEditor.vue` and `ImportPreview.vue` both define the same local type; extract to shared `schemas/` in a future refactor.
+- **`hasSyntaxError` computed decoupled from CodeMirror linter** — computes an independent `JSON.parse` rather than reading from CM linter state; risk of transient divergence on fast edits; pre-existing redundancy pattern.
+- **Drop zone not keyboard accessible** — file picker only triggered by click/drag; no keyboard path; future accessibility enhancement.
+- **Empty `testCases` array passes validation** — `z.array(...).max(500)` has no `.min(1)`; empty groups currently allowed; tighten if spec changes.
+- **`tupleCount` cast `as unknown[]` in `summaryInfo` computed** — minor type-safety gap; safe for well-formed JSON but bypasses type system.
+- **No MIME type validation on drag-and-drop** — non-JSON files fail at parse stage with an error message; add `accept` check on drop for earlier feedback.
+
+## Deferred from: code review of 9-3-results-display-and-suite-list-integration (2026-03-31)
+
+- **fetchSuite last-write-wins race** — no cancellation of in-flight API calls on suite change; pre-existing pattern across all stores.
+- **Polling leaks on permanent network loss** — trade-off from the AC4 stopPolling-on-unmount removal; interval fires indefinitely until tab closes.
+- **groupRatio() called 3× per render** — minor perf, benign for typical suite sizes.
+- **`created_at` cast without Date guard in repositories** — `(row.created_at as Date).toISOString()` assumes pg driver type parsing; pre-existing.
+- **`SuiteLastRun.status` untyped string** — should be a union type; nice-to-have.
+- **pass/fail icon data-testids not unique per test case** — both rows use `"tc-result-pass"` / `"tc-result-fail"`; cosmetic.
+- **Map key collision risk in SuiteTreePanel** — `${user}:${relation}:${object}:${expected}` separator collides if fields contain `:`; extremely low probability with valid OpenFGA data.
+
+## Deferred from: code review of 9-2-run-ui-and-phase-timeline (2026-03-31)
+
+- **"Loading fixtures" failure unreachable in RunPhaseTimeline** — backend emits only `failed` status without granular phase info; `results.length > 0` heuristic cannot distinguish provisioning failure from fixture-loading failure. Resolving requires a backend data-model change.
+- **`pollInterval` exposed in public store API** — internal implementation detail included in `useRunStore` return object; no functional impact, clean up in a future refactor.
+
+## Deferred from: code review of 8-1-suite-tree-and-form-editor (2026-03-31)
+
+- **AC3: autocomplete-on-focus not implemented** — Headless UI Combobox opens only on typing; AC3 says "autocomplete triggers on focus"; future UX enhancement.
+- **AC4: tags field is plain text input, not multi-select** — comma-separated text per dev notes; AC4 says "multi-select input"; accepted deviation.
+- **`SuiteTreePanel` `focusedNodeId` stale after collapse** — ArrowLeft silently no-ops when focused node's group is externally collapsed; low UX impact.
+- **`document.querySelector` in `focusNode` unscoped** — would find the first matching `[data-node-id]` in the document; breaks if two tree instances exist simultaneously.
+- **`onTagsBlur`/`onDescriptionBlur` fire on every blur, even without changes** — causes unnecessary PUT requests; optimise with dirty-check before saving.
+- **`useAutocompleteOptions` no null guard on `tuple.key.user/relation/object`** — malformed backend response could push `{ value: undefined, label: undefined }` options into SearchableSelect.
+
+## Deferred from: code review of 8-3-fixture-editor (2026-03-31)
+
+- **No debounce on `FixtureEditor.onJsonChange`** — rapid edits fire concurrent `saveDefinition` calls; same root issue as the 8-2 debounce deferral; address together.
+- **`editorMode` not reset when `suite.id` changes** — user stays on Fixture tab when navigating to a different suite; could show empty-state fixture for a suite they didn't intend to inspect.
+- **Validation error banner persists across tab switches** — `fixtureValidationError` is not cleared when user leaves and returns to Fixture tab; stale structural error may still show.
+- **Import does not validate fetched payload structure** — `onImportCurrentStore` trusts the backend export format; if the endpoint returns unexpected shape, invalid fixture is saved silently.
+- **Success/error toasts not asserted in import test** — `useToast` is not mocked in `FixtureEditor.test.ts`; toast calls are exercised but not verified.
+
+## Deferred from: code review of 8-2-json-editor-and-dual-mode-sync (2026-03-31)
+
+- **Direct mutation of `suiteStore.activeSuite` from view** — `SuiteEditor.vue` assigns `suiteStore.activeSuite = {...}` directly; bypasses Pinia actions. Pre-existing pattern in codebase; refactor would need a dedicated `patchActiveSuite` store action.
+- **No rollback on `saveDefinition` failure after optimistic update** — `onJsonChange` sets in-memory `activeSuite` before the API call resolves; on failure only a toast fires, leaving UI state diverged from server. Intentional optimistic-update pattern; rollback logic would need a dedicated story.
+- **No debounce on `onJsonChange`** — rapid JSON edits fire multiple concurrent `saveDefinition` calls with no cancellation; slow responses can overwrite out-of-order. Needs a dedicated debounce/AbortController story.
+- **Suite switch race: concurrent `fetchSuite` calls** — if parent changes `suite.id` while first fetch is still in flight, two concurrent fetches can race and leave `activeSuite` set to the wrong suite. Pre-existing async pattern; needs AbortController or derived fetch key.
+- **`watch(modelValue)` in SuiteJsonEditor destroys in-progress invalid JSON edits** — if parent's `jsonString` recomputes during mid-edit invalid state, the editor content is replaced. Known CodeMirror v-model round-trip limitation; full fix requires debouncing the emit or not round-tripping invalid content back.
+- **Shallow watch on `props.testCase` in `TestCaseForm`** — correct because Pinia replaces objects on mutation; would silently break if `updateTestCase` ever mutated in place.
+- **Suite-switch does not clear `expandedGroupIds`** — previous suite's expanded group IDs persist in session store when navigating to a new suite.
+- **ArrowDown/ArrowUp keyboard nav tests trivially assert `emitted().toBeDefined()`** — tests pass but verify nothing about actual focus movement.
+
+## Deferred from: code review of 7-2-suite-list-ui-with-create-delete-and-empty-state (2026-03-31)
+
+- **SuiteCard counts hardcoded "— groups · — tests"** — by design per dev notes, SuiteListItem carries no count fields; to be populated in Epic 8 when definition is loaded.
+- **`fetchSuite` has no error state tracking** — `try/finally` only; Epic 8 scope to add `errorSuite` ref and UI feedback.
+- **Tags input has no format/length validation** — plain comma-split; not spec'd for this story; future UX enhancement.
+- **`AppTabs` slot naming couples tab key to slot name** — renaming a tab key is a silent breaking change; pre-existing design pattern across the codebase.
+- **`crypto.randomUUID()` no polyfill for non-secure contexts** — dev tooling serves over HTTPS; low risk; add polyfill if ever served over HTTP.
+
+## Deferred from: code review of 7-1-suite-crud-api-and-postgresql-infrastructure (2026-03-31)
+
+- **Hardcoded credentials in docker-compose** [docker-compose.yml] — `openfga_viewer`/`openfga_viewer` plaintext; dev-only concern but no env-var fallback.
+- **`suiteId` param not validated as UUID format** [backend/src/test-suites/routes/suites.ts] — parameterized queries prevent injection; wasteful round-trip for invalid IDs but cosmetic.
+- **Migration filename uses sequential integer prefix, not timestamp** [backend/src/test-suites/migrations/001_create-suites.sql] — risks ordering conflicts in parallel branches; team-scale concern.
+- **`updated_at = NOW()` latent defect in dynamic builder** [backend/src/test-suites/repositories/suite-repository.ts] — parameter index would collide if `updated_at` is ever converted to a bound parameter; latent only.
+- **`listSuites` returns `{ suites: [...] }` envelope** — verify against frontend store expectations; no violation found but worth confirming.
+
 ## Deferred from: code review of 1-1-project-scaffolding-and-dev-environment (2026-03-27)
 
 - **Vite proxy `localhost:3000` fails inside Docker** [frontend/vite.config.ts] — inside the frontend container, `localhost` resolves to the container itself, not the backend service. Vite proxy target would need to be `http://backend:3000` for Docker. Low priority: Docker runtime was explicitly deferred in story notes; affects Docker-only workflows, not bare-host dev.
