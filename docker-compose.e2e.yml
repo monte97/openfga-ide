@@ -6,7 +6,7 @@ services:
       - ./frontend:/app/frontend
       - e2e_frontend_modules:/app/frontend/node_modules
     ports:
-      - "5173:5173"
+      - "5174:5173"
     environment:
       - VITE_API_TARGET=http://backend:3000
     command: sh -c "npm install && npm run dev -- --host"
@@ -21,12 +21,12 @@ services:
       - ./backend:/app/backend
       - e2e_backend_modules:/app/backend/node_modules
     ports:
-      - "3000:3000"
+      - "3010:3000"
     environment:
       - OPENFGA_URL=http://openfga:8080
       - PORT=3000
       - DATABASE_URL=postgresql://openfga_viewer:openfga_viewer@postgres:5432/openfga_viewer
-    command: sh -c "npm install && npm run dev"
+    command: sh -c "npm install && npx tsx src/server.ts"
     depends_on:
       openfga:
         condition: service_started
@@ -43,8 +43,8 @@ services:
     image: openfga/openfga:latest
     command: run
     ports:
-      - "8080:8080"
-      - "8081:8081"
+      - "8090:8080"
+      - "8091:8081"
 
   postgres:
     image: postgres:16-alpine
@@ -53,9 +53,7 @@ services:
       POSTGRES_PASSWORD: openfga_viewer
       POSTGRES_DB: openfga_viewer
     ports:
-      - "5432:5432"
-    volumes:
-      - e2e_postgres_data:/var/lib/postgresql/data
+      - "5433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U openfga_viewer"]
       interval: 5s
@@ -65,4 +63,7 @@ services:
 volumes:
   e2e_frontend_modules:
   e2e_backend_modules:
-  e2e_postgres_data:
+
+networks:
+  default:
+    name: openfga-viewer-e2e

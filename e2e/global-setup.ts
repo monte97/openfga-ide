@@ -12,8 +12,7 @@
  * (e.g. via a fixture that calls PUT /api/connection with a storeId).
  */
 
-const BACKEND_URL = 'http://localhost:3000'
-const FRONTEND_URL = 'http://localhost:5173'
+import { BACKEND_URL, BASE_URL as FRONTEND_URL } from './config'
 const POLL_INTERVAL_MS = 2_000
 const TIMEOUT_MS = 120_000
 

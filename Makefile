@@ -1,4 +1,6 @@
-.PHONY: help dev dev-local dev-detach stop openfga-start openfga-stop build build-backend build-frontend test test-backend test-frontend test-e2e e2e-up e2e-down lint format type-check install clean
+.PHONY: help dev dev-local dev-detach stop openfga-start openfga-stop build build-backend build-frontend test test-backend test-frontend test-smoke test-functional test-e2e test-e2e-headed test-e2e-list test-e2e-ui e2e-up e2e-down lint format type-check install clean
+
+include make/test.mk
 
 OPENFGA_CONTAINER = openfga-dev
 
@@ -17,13 +19,17 @@ help:
 	@echo "  build-frontend Build frontend only"
 	@echo ""
 	@echo "Test"
-	@echo "  test           Run all tests (backend + frontend)"
-	@echo "  test-backend   Run backend tests"
-	@echo "  test-frontend  Run frontend tests"
-	@echo "  test-e2e       Start E2E environment, run Playwright, tear down"
-	@echo "  test-e2e-ui    Open Playwright UI mode (requires e2e-up first)"
+	@echo "  test           Run all unit tests (backend + frontend)"
+	@echo "  test-backend   Run backend unit tests"
+	@echo "  test-frontend  Run frontend unit tests"
+	@echo "  test-smoke     Run E2E smoke tests against local dev (no Docker needed)"
+	@echo "  test-functional Run E2E functional tests (requires running backend + DB)"
+	@echo "  test-e2e       Start E2E environment, run all Playwright tests, tear down"
+	@echo "  test-e2e-headed Run all E2E tests with visible browser"
+	@echo "  test-e2e-list  List all E2E tests without running them"
+	@echo "  test-e2e-ui    Open Playwright UI mode (e2e-up recommended first)"
 	@echo "  e2e-up         Start E2E Docker environment (detached)"
-	@echo "  e2e-down       Stop E2E Docker environment"
+	@echo "  e2e-down       Stop E2E Docker environment and remove volumes"
 	@echo ""
 	@echo "Quality"
 	@echo "  lint           Lint frontend (oxlint + eslint)"
@@ -72,28 +78,6 @@ build-backend:
 
 build-frontend:
 	npm --prefix frontend run build
-
-# ── Test ─────────────────────────────────────────────────────────────────────
-
-test: test-backend test-frontend
-
-test-backend:
-	npm --prefix backend test
-
-test-frontend:
-	npm --prefix frontend run test:unit -- --run
-
-e2e-up:
-	docker compose -f docker-compose.e2e.yml up -d
-
-e2e-down:
-	docker compose -f docker-compose.e2e.yml down
-
-test-e2e: e2e-up
-	npx playwright test; EXIT=$$?; $(MAKE) e2e-down; exit $$EXIT
-
-test-e2e-ui:
-	npx playwright test --ui
 
 # ── Quality ──────────────────────────────────────────────────────────────────
 

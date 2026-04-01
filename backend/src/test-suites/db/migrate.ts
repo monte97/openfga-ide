@@ -12,9 +12,9 @@ export async function runMigrations(databaseUrl: string): Promise<void> {
   const migrate = _require('node-pg-migrate') as any
   const migrationsDir = path.resolve(__dirname, '../migrations')
 
-  // node-pg-migrate may export the run function directly or as .default depending on version
+  // node-pg-migrate exports { runner } in v7+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const fn: (opts: unknown) => Promise<void> = typeof migrate === 'function' ? migrate : migrate.default
+  const fn: (opts: unknown) => Promise<void> = typeof migrate === 'function' ? migrate : (migrate.runner ?? migrate.default)
   try {
     await fn({
       databaseUrl,
