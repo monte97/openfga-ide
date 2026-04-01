@@ -13,3 +13,7 @@ coverage/
 frontend/coverage/
 backend/coverage/
 .stryker-tmp/
+
+# Playwright
+playwright-report/
+test-results/

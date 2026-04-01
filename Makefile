@@ -1,4 +1,4 @@
-.PHONY: help dev dev-local dev-detach stop openfga-start openfga-stop build build-backend build-frontend test test-backend test-frontend lint format type-check install clean
+.PHONY: help dev dev-local dev-detach stop openfga-start openfga-stop build build-backend build-frontend test test-backend test-frontend test-e2e e2e-up e2e-down lint format type-check install clean
 
 OPENFGA_CONTAINER = openfga-dev
 
@@ -20,6 +20,10 @@ help:
 	@echo "  test           Run all tests (backend + frontend)"
 	@echo "  test-backend   Run backend tests"
 	@echo "  test-frontend  Run frontend tests"
+	@echo "  test-e2e       Start E2E environment, run Playwright, tear down"
+	@echo "  test-e2e-ui    Open Playwright UI mode (requires e2e-up first)"
+	@echo "  e2e-up         Start E2E Docker environment (detached)"
+	@echo "  e2e-down       Stop E2E Docker environment"
 	@echo ""
 	@echo "Quality"
 	@echo "  lint           Lint frontend (oxlint + eslint)"
@@ -78,6 +82,18 @@ test-backend:
 
 test-frontend:
 	npm --prefix frontend run test:unit -- --run
+
+e2e-up:
+	docker compose -f docker-compose.e2e.yml up -d
+
+e2e-down:
+	docker compose -f docker-compose.e2e.yml down
+
+test-e2e: e2e-up
+	npx playwright test; EXIT=$$?; $(MAKE) e2e-down; exit $$EXIT
+
+test-e2e-ui:
+	npx playwright test --ui
 
 # ── Quality ──────────────────────────────────────────────────────────────────
 
