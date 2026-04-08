@@ -162,6 +162,20 @@ describe('SuiteCard', () => {
     expect(wrapper.find('.flex.flex-wrap').exists()).toBe(false)
   })
 
+  it('displays real group and test counts', () => {
+    const multiSuite = { ...suite, groupCount: 2, testCount: 5 }
+    const wrapper = mountCard({ suite: multiSuite })
+    expect(wrapper.text()).toContain('2 groups')
+    expect(wrapper.text()).toContain('5 tests')
+  })
+
+  it('uses singular form for 1 group and 1 test', () => {
+    const singleSuite = { ...suite, groupCount: 1, testCount: 1 }
+    const wrapper = mountCard({ suite: singleSuite })
+    expect(wrapper.text()).toContain('1 group')
+    expect(wrapper.text()).toContain('1 test')
+  })
+
   describe('lastRun badge', () => {
     it('shows "Never run" badge when lastRun is null', () => {
       const wrapper = mountCard()

@@ -19,9 +19,15 @@ function mapRowToSuiteListItem(row: Record<string, unknown>): SuiteListItem {
 }
 
 function mapRowToSuite(row: Record<string, unknown>): Suite {
+  const definition = row.definition as Suite['definition']
+  const groups = definition?.groups ?? []
+  const groupCount = groups.length
+  const testCount = groups.reduce((sum, g) => sum + (g.testCases?.length ?? 0), 0)
   return {
     ...mapRowToSuiteListItem(row),
-    definition: row.definition as Suite['definition'],
+    definition,
+    groupCount,
+    testCount,
   }
 }
 
