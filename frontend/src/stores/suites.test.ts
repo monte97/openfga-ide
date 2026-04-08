@@ -255,6 +255,45 @@ describe('useSuiteStore', () => {
       fetchMock.mockRejectedValue(abortError)
       await expect(store.saveDefinition('suite-1', { groups: [] })).resolves.toBeUndefined()
     })
+
+    it('rolls back activeSuite to last saved definition on API failure', async () => {
+      const { useSuiteStore } = await import('./suites')
+      const store = useSuiteStore()
+      // Simulate fetchSuite having loaded the suite (sets lastSavedDefinition)
+      fetchMock.mockResolvedValueOnce(makeOkResponse(fullSuite))
+      await store.fetchSuite('suite-1')
+
+      const originalDefinition = store.activeSuite!.definition
+
+      // Optimistic update (e.g. user edits JSON)
+      const editedDef = { groups: [{ id: 'g-new', name: 'New', testCases: [] }] }
+      store.patchDefinition(editedDef)
+      expect(store.activeSuite!.definition.groups[0].name).toBe('New')
+
+      // Save fails
+      fetchMock.mockResolvedValue(makeErrorResponse('Server error', 500))
+      await expect(store.saveDefinition('suite-1', editedDef)).rejects.toThrow('Server error')
+
+      // UI must revert to the last confirmed server state
+      expect(store.activeSuite!.definition).toEqual(originalDefinition)
+    })
+
+    it('does not rollback when save is aborted (no error shown)', async () => {
+      const { useSuiteStore } = await import('./suites')
+      const store = useSuiteStore()
+      fetchMock.mockResolvedValueOnce(makeOkResponse(fullSuite))
+      await store.fetchSuite('suite-1')
+
+      const editedDef = { groups: [{ id: 'g-x', name: 'Edited', testCases: [] }] }
+      store.patchDefinition(editedDef)
+
+      // Abort the save — should NOT rollback
+      const abortError = new DOMException('Aborted', 'AbortError')
+      fetchMock.mockRejectedValue(abortError)
+      await store.saveDefinition('suite-1', editedDef)
+
+      expect(store.activeSuite!.definition.groups[0].name).toBe('Edited')
+    })
   })
 
   describe('addGroup()', () => {

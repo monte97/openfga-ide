@@ -72,6 +72,9 @@ export const useSuiteStore = defineStore('suites', () => {
   let fetchAbort: AbortController | null = null
   let saveAbort: AbortController | null = null
 
+  // Last definition confirmed by the server — used to rollback optimistic UI updates on save failure
+  let lastSavedDefinition: SuiteDefinition | null = null
+
   async function fetchSuites(): Promise<void> {
     loading.value = true
     error.value = null
@@ -110,22 +113,21 @@ export const useSuiteStore = defineStore('suites', () => {
     try {
       const data = await api.get<Suite>(`suites/${id}`, controller.signal)
       // Backend does not persist group/testCase IDs — assign locally on load
-      activeSuite.value = {
-        ...data,
-        definition: data.definition
-          ? {
-              fixture: data.definition.fixture,
-              groups: (data.definition.groups ?? []).map((g) => ({
-                ...g,
-                id: (g as { id?: string }).id || crypto.randomUUID(),
-                testCases: (g.testCases ?? []).map((t) => ({
-                  ...t,
-                  id: (t as { id?: string }).id || crypto.randomUUID(),
-                })),
+      const resolvedDefinition: SuiteDefinition = data.definition
+        ? {
+            fixture: data.definition.fixture,
+            groups: (data.definition.groups ?? []).map((g) => ({
+              ...g,
+              id: (g as { id?: string }).id || crypto.randomUUID(),
+              testCases: (g.testCases ?? []).map((t) => ({
+                ...t,
+                id: (t as { id?: string }).id || crypto.randomUUID(),
               })),
-            }
-          : { groups: [] },
-      }
+            })),
+          }
+        : { groups: [] }
+      activeSuite.value = { ...data, definition: resolvedDefinition }
+      lastSavedDefinition = resolvedDefinition
     } catch (err) {
       if (controller.signal.aborted || isAbortError(err)) return
       errorSuite.value = (err as Error).message
@@ -150,9 +152,14 @@ export const useSuiteStore = defineStore('suites', () => {
       await api.put<Suite>(`suites/${id}`, { definition }, saveAbort.signal)
       if (activeSuite.value?.id === id) {
         activeSuite.value = { ...activeSuite.value, definition }
+        lastSavedDefinition = definition
       }
     } catch (err) {
       if (isAbortError(err)) return
+      // Rollback: restore the last definition confirmed by the server
+      if (activeSuite.value?.id === id && lastSavedDefinition !== null) {
+        activeSuite.value = { ...activeSuite.value, definition: lastSavedDefinition }
+      }
       throw err
     }
   }
