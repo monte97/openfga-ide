@@ -1,7 +1,7 @@
 import { ref } from 'vue'
-import dagre from 'dagre'
 import type { Node, Edge } from '@vue-flow/core'
 import { getTypeColor } from '@/utils/typeColors'
+import { applyDagreLayout } from '@/utils/graphLayout'
 
 export interface DirectlyRelatedUserType {
   type: string
@@ -35,34 +35,6 @@ export interface ModelNodeData {
   referencedByTypes: Array<{ type: string; relation: string }>
 }
 
-const NODE_WIDTH = 160
-const NODE_HEIGHT = 60
-
-function applyDagreLayout(nodes: Node[], edges: Edge[]): Node[] {
-  const g = new dagre.graphlib.Graph()
-  g.setDefaultEdgeLabel(() => ({}))
-  g.setGraph({ rankdir: 'LR', nodesep: 60, ranksep: 100 })
-
-  nodes.forEach((node) => {
-    g.setNode(node.id, { width: NODE_WIDTH, height: NODE_HEIGHT })
-  })
-  edges.forEach((edge) => {
-    g.setEdge(edge.source, edge.target)
-  })
-
-  dagre.layout(g)
-
-  return nodes.map((node) => {
-    const pos = g.node(node.id)
-    return {
-      ...node,
-      position: {
-        x: pos.x - NODE_WIDTH / 2,
-        y: pos.y - NODE_HEIGHT / 2,
-      },
-    }
-  })
-}
 
 export function useModelGraph(modelJson: object | null) {
   const nodes = ref<Node[]>([])
@@ -141,7 +113,13 @@ export function useModelGraph(modelJson: object | null) {
   })
 
   // Apply dagre layout
-  const laidOutNodes = applyDagreLayout(rawNodes, rawEdges)
+  const laidOutNodes = applyDagreLayout(rawNodes, rawEdges, {
+    rankdir: 'LR',
+    nodeWidth: 160,
+    nodeHeight: 60,
+    nodesep: 60,
+    ranksep: 100,
+  })
   nodes.value = laidOutNodes
   edges.value = rawEdges
   layoutDone.value = true
