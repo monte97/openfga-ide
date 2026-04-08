@@ -1,6 +1,6 @@
 import { getPool } from '../db/pool.js'
 import type { Suite, SuiteListItem, CreateSuiteInput, UpdateSuiteInput } from '../types/suite.js'
-import type { RunSummary } from '../types/run.js'
+import type { RunStatus, RunSummary } from '../types/run.js'
 
 function mapRowToSuiteListItem(row: Record<string, unknown>): SuiteListItem {
   return {
@@ -11,7 +11,7 @@ function mapRowToSuiteListItem(row: Record<string, unknown>): SuiteListItem {
     createdAt: (row.created_at as Date).toISOString(),
     updatedAt: (row.updated_at as Date).toISOString(),
     lastRun: row.last_run_status
-      ? { status: row.last_run_status as string, summary: (row.last_run_summary as RunSummary | null) ?? null }
+      ? { status: row.last_run_status as RunStatus, summary: (row.last_run_summary as RunSummary | null) ?? null }
       : null,
     groupCount: (row.group_count as number) ?? 0,
     testCount: (row.test_count as number) ?? 0,

@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { useApi } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
-import type { RunSummary } from '@/stores/runs'
+import type { RunStatus, RunSummary } from '@/stores/runs'
 import type { ImportSuitePayload } from '@/schemas/suite'
 
 export interface SuiteListItem {
@@ -12,7 +12,7 @@ export interface SuiteListItem {
   tags: string[]
   createdAt: string
   updatedAt: string
-  lastRun: { status: string; summary: RunSummary | null } | null
+  lastRun: { status: RunStatus; summary: RunSummary | null } | null
   groupCount: number
   testCount: number
 }

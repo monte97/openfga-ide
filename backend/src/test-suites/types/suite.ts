@@ -35,10 +35,12 @@ export interface Suite {
   definition: SuiteDefinition | null
   createdAt: string
   updatedAt: string
+  groupCount: number
+  testCount: number
 }
 
 export interface SuiteLastRun {
-  status: string
+  status: import('./run.js').RunStatus
   summary: import('./run.js').RunSummary | null
 }
 
