@@ -8,6 +8,9 @@ dist
 # Claude Code local settings
 .claude/
 
+# Superpowers brainstorming sessions
+.superpowers/
+
 # Coverage output
 coverage/
 frontend/coverage/
