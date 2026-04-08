@@ -131,7 +131,7 @@ function makeRunStoreMock(overrides: Record<string, unknown> = {}) {
     currentRun: null as Run | null,
     loading: false,
     error: null,
-    pollInterval: null,
+    isPolling: false,
     consecutiveErrors: 0,
     pollingError: null as string | null,
     triggerRun: vi.fn().mockResolvedValue('run-1'),

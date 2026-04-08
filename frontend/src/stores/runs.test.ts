@@ -47,7 +47,7 @@ describe('useRunStore', () => {
     expect(store.currentRun).toBeNull()
     expect(store.loading).toBe(false)
     expect(store.error).toBeNull()
-    expect(store.pollInterval).toBeNull()
+    expect(store.isPolling).toBe(false)
   })
 
   describe('triggerRun()', () => {
@@ -101,7 +101,7 @@ describe('useRunStore', () => {
       expect(store.error).toBe('Suite has no fixture')
     })
 
-    it('sets pollInterval after successful trigger', async () => {
+    it('starts polling after successful trigger', async () => {
       const { useRunStore } = await import('./runs')
       const store = useRunStore()
       fetchMock
@@ -109,7 +109,7 @@ describe('useRunStore', () => {
         .mockResolvedValue(makeOkResponse(makeRun()))
 
       await store.triggerRun('suite-1')
-      expect(store.pollInterval).not.toBeNull()
+      expect(store.isPolling).toBe(true)
     })
   })
 
@@ -128,39 +128,38 @@ describe('useRunStore', () => {
     it('stops polling when status is completed', async () => {
       const { useRunStore } = await import('./runs')
       const store = useRunStore()
-      const run = makeRun({ status: 'completed', summary: { total: 5, passed: 5, failed: 0, errored: 0, durationMs: 100 } })
-      fetchMock.mockResolvedValue(makeOkResponse(run))
+      fetchMock.mockResolvedValue(makeOkResponse(makeRun({ status: 'running' })))
+      store.startPolling('run-1')
+      await vi.runAllTicks()
+      expect(store.isPolling).toBe(true)
 
-      // Set up polling first
-      store.pollInterval = setInterval(() => {}, 9999) as ReturnType<typeof setInterval>
+      fetchMock.mockResolvedValueOnce(makeOkResponse(makeRun({ status: 'completed', summary: { total: 5, passed: 5, failed: 0, errored: 0, durationMs: 100 } })))
       await store.fetchRun('run-1')
-
-      expect(store.pollInterval).toBeNull()
+      expect(store.isPolling).toBe(false)
     })
 
     it('stops polling when status is failed', async () => {
       const { useRunStore } = await import('./runs')
       const store = useRunStore()
-      const run = makeRun({ status: 'failed' })
-      fetchMock.mockResolvedValue(makeOkResponse(run))
+      fetchMock.mockResolvedValue(makeOkResponse(makeRun({ status: 'running' })))
+      store.startPolling('run-1')
+      await vi.runAllTicks()
+      expect(store.isPolling).toBe(true)
 
-      store.pollInterval = setInterval(() => {}, 9999) as ReturnType<typeof setInterval>
+      fetchMock.mockResolvedValueOnce(makeOkResponse(makeRun({ status: 'failed' })))
       await store.fetchRun('run-1')
-
-      expect(store.pollInterval).toBeNull()
+      expect(store.isPolling).toBe(false)
     })
 
     it('does not stop polling when status is running', async () => {
       const { useRunStore } = await import('./runs')
       const store = useRunStore()
       fetchMock.mockResolvedValue(makeOkResponse(makeRun({ status: 'running' })))
+      store.startPolling('run-1')
+      await vi.runAllTicks()
 
-      const interval = setInterval(() => {}, 9999) as ReturnType<typeof setInterval>
-      store.pollInterval = interval
       await store.fetchRun('run-1')
-
-      expect(store.pollInterval).not.toBeNull()
-      clearInterval(interval)
+      expect(store.isPolling).toBe(true)
     })
 
     it('silently ignores network errors (no toast storm on polling failures)', async () => {
@@ -175,7 +174,7 @@ describe('useRunStore', () => {
   })
 
   describe('startPolling()', () => {
-    it('sets pollInterval and fetches immediately', async () => {
+    it('sets isPolling and fetches immediately', async () => {
       const { useRunStore } = await import('./runs')
       const store = useRunStore()
       fetchMock.mockResolvedValue(makeOkResponse(makeRun({ status: 'running' })))
@@ -183,24 +182,29 @@ describe('useRunStore', () => {
       store.startPolling('run-1')
       await vi.runAllTicks()
 
-      expect(store.pollInterval).not.toBeNull()
+      expect(store.isPolling).toBe(true)
       expect(fetchMock).toHaveBeenCalledWith(
         expect.stringContaining('/api/runs/run-1'),
       )
     })
 
-    it('clears existing interval before starting new one', async () => {
+    it('clears existing polling before starting new one', async () => {
       const { useRunStore } = await import('./runs')
       const store = useRunStore()
       fetchMock.mockResolvedValue(makeOkResponse(makeRun({ status: 'running' })))
 
-      const oldInterval = setInterval(() => {}, 9999) as ReturnType<typeof setInterval>
-      store.pollInterval = oldInterval
-
       store.startPolling('run-1')
+      await vi.runAllTicks()
+      const callsAfterFirst = fetchMock.mock.calls.length
 
-      // Old interval was replaced
-      expect(store.pollInterval).not.toBe(oldInterval)
+      store.startPolling('run-2')
+      await vi.runAllTicks()
+
+      // run-2 was fetched, not just run-1
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        expect.stringContaining('/api/runs/run-2'),
+      )
+      expect(fetchMock.mock.calls.length).toBeGreaterThan(callsAfterFirst)
     })
 
     it('fires fetchRun again after 2 seconds', async () => {
@@ -219,19 +223,23 @@ describe('useRunStore', () => {
   })
 
   describe('stopPolling()', () => {
-    it('clears interval and sets pollInterval to null', async () => {
+    it('clears polling when active', async () => {
       const { useRunStore } = await import('./runs')
       const s = useRunStore()
-      s.pollInterval = setInterval(() => {}, 9999) as ReturnType<typeof setInterval>
+      fetchMock.mockResolvedValue(makeOkResponse(makeRun({ status: 'running' })))
+      s.startPolling('run-1')
+      await vi.runAllTicks()
+      expect(s.isPolling).toBe(true)
+
       s.stopPolling()
-      expect(s.pollInterval).toBeNull()
+      expect(s.isPolling).toBe(false)
     })
 
     it('is idempotent when no interval is active', async () => {
       const { useRunStore } = await import('./runs')
       const store = useRunStore()
       expect(() => store.stopPolling()).not.toThrow()
-      expect(store.pollInterval).toBeNull()
+      expect(store.isPolling).toBe(false)
     })
   })
 
@@ -239,15 +247,17 @@ describe('useRunStore', () => {
     it('resets currentRun, error, and stops polling', async () => {
       const { useRunStore } = await import('./runs')
       const store = useRunStore()
+      fetchMock.mockResolvedValue(makeOkResponse(makeRun({ status: 'running' })))
       store.currentRun = makeRun() as never
       store.error = 'some error'
-      store.pollInterval = setInterval(() => {}, 9999) as ReturnType<typeof setInterval>
+      store.startPolling('run-1')
+      await vi.runAllTicks()
 
       store.clearRun()
 
       expect(store.currentRun).toBeNull()
       expect(store.error).toBeNull()
-      expect(store.pollInterval).toBeNull()
+      expect(store.isPolling).toBe(false)
     })
 
     it('resets consecutiveErrors and pollingError', async () => {
@@ -278,7 +288,7 @@ describe('useRunStore', () => {
       }
 
       expect(store.pollingError).not.toBeNull()
-      expect(store.pollInterval).toBeNull()
+      expect(store.isPolling).toBe(false)
     })
 
     it('stops polling on 5 consecutive non-ok responses', async () => {
@@ -294,7 +304,7 @@ describe('useRunStore', () => {
       }
 
       expect(store.pollingError).not.toBeNull()
-      expect(store.pollInterval).toBeNull()
+      expect(store.isPolling).toBe(false)
     })
 
     it('resets consecutiveErrors on successful fetch', async () => {
@@ -332,7 +342,7 @@ describe('useRunStore', () => {
 
       expect(store.consecutiveErrors).toBe(0)
       expect(store.pollingError).toBeNull()
-      expect(store.pollInterval).not.toBeNull()
+      expect(store.isPolling).toBe(true)
     })
 
     it('retryPolling does nothing when no currentRun', async () => {
@@ -345,7 +355,7 @@ describe('useRunStore', () => {
 
       expect(store.consecutiveErrors).toBe(0)
       expect(store.pollingError).toBeNull()
-      expect(store.pollInterval).toBeNull()
+      expect(store.isPolling).toBe(false)
     })
   })
 })

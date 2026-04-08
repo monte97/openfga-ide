@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { useApi } from '@/composables/useApi'
 
@@ -49,6 +49,7 @@ export const useRunStore = defineStore('runs', () => {
   const pollInterval = ref<ReturnType<typeof setInterval> | null>(null)
   const consecutiveErrors = ref(0)
   const pollingError = ref<string | null>(null)
+  const isPolling = computed(() => pollInterval.value !== null)
 
   async function triggerRun(suiteId: string, testCaseId?: string): Promise<string> {
     loading.value = true
@@ -127,5 +128,5 @@ export const useRunStore = defineStore('runs', () => {
     stopPolling()
   }
 
-  return { currentRun, loading, error, pollInterval, consecutiveErrors, pollingError, triggerRun, fetchRun, startPolling, stopPolling, clearRun, retryPolling }
+  return { currentRun, loading, error, isPolling, consecutiveErrors, pollingError, triggerRun, fetchRun, startPolling, stopPolling, clearRun, retryPolling }
 })
