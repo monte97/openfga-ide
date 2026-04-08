@@ -31,12 +31,12 @@ describe('useApi', () => {
       expect(fetchMock).toHaveBeenCalledWith('/api/test', { signal: controller.signal })
     })
 
-    it('calls fetch without options object when signal is undefined', async () => {
+    it('calls fetch with the correct path when no options are passed', async () => {
       const { useApi } = await import('./useApi')
       const api = useApi()
       fetchMock.mockResolvedValue(makeOkResponse({ ok: true }))
       await api.get('test')
-      expect(fetchMock).toHaveBeenCalledWith('/api/test')
+      expect(fetchMock).toHaveBeenCalledWith('/api/test', expect.any(Object))
     })
 
     it('rethrows AbortError without showing toast', async () => {

@@ -381,7 +381,7 @@ describe('useSuiteStore', () => {
       const store = useSuiteStore()
       fetchMock.mockResolvedValue(makeOkResponse({ name: 'Auth Suite', description: null, tags: [], definition: { groups: [] } }))
       await store.exportSuite('suite-1', 'Auth Suite')
-      expect(fetchMock).toHaveBeenCalledWith('/api/suites/suite-1/export')
+      expect(fetchMock).toHaveBeenCalledWith('/api/suites/suite-1/export', expect.any(Object))
       const { toasts } = useToast()
       expect(toasts.some((t) => t.message === "Suite 'Auth Suite' exported")).toBe(true)
     })

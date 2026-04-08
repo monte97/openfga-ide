@@ -37,8 +37,8 @@ describe('AppHeader', () => {
     mount(AppHeader, { global: { plugins: [pinia, router] } })
     await flushPromises()
 
-    expect(fetchMock).toHaveBeenCalledWith('/api/connection')
-    expect(fetchMock).toHaveBeenCalledWith('/api/stores')
+    expect(fetchMock).toHaveBeenCalledWith('/api/connection', expect.any(Object))
+    expect(fetchMock).toHaveBeenCalledWith('/api/stores', expect.any(Object))
   })
 
   it('shows "Select a store..." text when connected but no store selected', async () => {

@@ -64,7 +64,7 @@ export const useConnectionStore = defineStore('connection', () => {
 
   async function testConnection(testUrl: string): Promise<boolean> {
     try {
-      await api.post<TestConnectionResponse>('connection/test', { url: testUrl })
+      await api.post<TestConnectionResponse>('connection/test', { url: testUrl }, { silent: true })
       return true
     } catch {
       return false

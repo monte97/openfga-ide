@@ -19,7 +19,7 @@ describe('useApi', () => {
     })
     const { get } = useApi()
     await get('stores')
-    expect(fetchMock).toHaveBeenCalledWith('/api/stores')
+    expect(fetchMock).toHaveBeenCalledWith('/api/stores', expect.any(Object))
   })
 
   it('get() returns typed data on success', async () => {
