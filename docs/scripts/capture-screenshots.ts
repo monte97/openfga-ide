@@ -67,7 +67,9 @@ async function setupDemoStore(demo: DemoFixture): Promise<string> {
   // Create a fresh store
   const store = await api<{ id: string }>('/api/stores', {
     method: 'POST',
-    body: JSON.stringify({ name: demo.storeName }),
+    // Sanitize store name: replace characters outside the backend's allowed set
+    // (e.g. em-dash in "Demo — Document Sharing") with a regular hyphen.
+    body: JSON.stringify({ name: demo.storeName.replace(/[^a-zA-Z0-9\s.\-/^_&@]/g, '-').trim() }),
   })
 
   // Import the demo model and tuples
