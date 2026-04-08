@@ -16,7 +16,7 @@
 ## Deferred from: code review of 9-3-results-display-and-suite-list-integration (2026-03-31)
 
 - **fetchSuite last-write-wins race** — no cancellation of in-flight API calls on suite change; pre-existing pattern across all stores.
-- **Polling leaks on permanent network loss** — trade-off from the AC4 stopPolling-on-unmount removal; interval fires indefinitely until tab closes.
+- ~~**Polling leaks on permanent network loss**~~ — fixed in Epic 11: circuit breaker stops polling after 5 consecutive errors (`MAX_POLL_ERRORS`).
 - **groupRatio() called 3× per render** — minor perf, benign for typical suite sizes.
 - **`created_at` cast without Date guard in repositories** — `(row.created_at as Date).toISOString()` assumes pg driver type parsing; pre-existing.
 - **`SuiteLastRun.status` untyped string** — should be a union type; nice-to-have.
@@ -39,8 +39,8 @@
 
 ## Deferred from: code review of 8-3-fixture-editor (2026-03-31)
 
-- **No debounce on `FixtureEditor.onJsonChange`** — rapid edits fire concurrent `saveDefinition` calls; same root issue as the 8-2 debounce deferral; address together.
-- **`editorMode` not reset when `suite.id` changes** — user stays on Fixture tab when navigating to a different suite; could show empty-state fixture for a suite they didn't intend to inspect.
+- ~~**No debounce on `FixtureEditor.onJsonChange`**~~ — fixed: `fixtureSaveTimer` debounce already present in `FixtureEditor.vue`.
+- ~~**`editorMode` not reset when `suite.id` changes**~~ — fixed 2026-04-08: `setEditorMode('form')` added to `onMounted` in `SuiteEditor.vue`.
 - **Validation error banner persists across tab switches** — `fixtureValidationError` is not cleared when user leaves and returns to Fixture tab; stale structural error may still show.
 - **Import does not validate fetched payload structure** — `onImportCurrentStore` trusts the backend export format; if the endpoint returns unexpected shape, invalid fixture is saved silently.
 - **Success/error toasts not asserted in import test** — `useToast` is not mocked in `FixtureEditor.test.ts`; toast calls are exercised but not verified.
@@ -49,7 +49,7 @@
 
 - **Direct mutation of `suiteStore.activeSuite` from view** — `SuiteEditor.vue` assigns `suiteStore.activeSuite = {...}` directly; bypasses Pinia actions. Pre-existing pattern in codebase; refactor would need a dedicated `patchActiveSuite` store action.
 - **No rollback on `saveDefinition` failure after optimistic update** — `onJsonChange` sets in-memory `activeSuite` before the API call resolves; on failure only a toast fires, leaving UI state diverged from server. Intentional optimistic-update pattern; rollback logic would need a dedicated story.
-- **No debounce on `onJsonChange`** — rapid JSON edits fire multiple concurrent `saveDefinition` calls with no cancellation; slow responses can overwrite out-of-order. Needs a dedicated debounce/AbortController story.
+- ~~**No debounce on `onJsonChange`**~~ — fixed: `jsonSaveTimer` 600ms debounce already present in `SuiteEditor.vue`.
 - **Suite switch race: concurrent `fetchSuite` calls** — if parent changes `suite.id` while first fetch is still in flight, two concurrent fetches can race and leave `activeSuite` set to the wrong suite. Pre-existing async pattern; needs AbortController or derived fetch key.
 - **`watch(modelValue)` in SuiteJsonEditor destroys in-progress invalid JSON edits** — if parent's `jsonString` recomputes during mid-edit invalid state, the editor content is replaced. Known CodeMirror v-model round-trip limitation; full fix requires debouncing the emit or not round-tripping invalid content back.
 - **Shallow watch on `props.testCase` in `TestCaseForm`** — correct because Pinia replaces objects on mutation; would silently break if `updateTestCase` ever mutated in place.
@@ -74,7 +74,7 @@
 
 ## Deferred from: code review of 1-1-project-scaffolding-and-dev-environment (2026-03-27)
 
-- **Vite proxy `localhost:3000` fails inside Docker** [frontend/vite.config.ts] — inside the frontend container, `localhost` resolves to the container itself, not the backend service. Vite proxy target would need to be `http://backend:3000` for Docker. Low priority: Docker runtime was explicitly deferred in story notes; affects Docker-only workflows, not bare-host dev.
+- ~~**Vite proxy `localhost:3000` fails inside Docker**~~ — fixed: `VITE_API_TARGET=http://backend:3000` env var in `docker-compose.yml`; `vite.config.ts` reads it via `process.env.VITE_API_TARGET`.
 
 ## Deferred from: code review of 1-6-store-administration (2026-03-27)
 
@@ -110,11 +110,11 @@
 ## Deferred from: code review of 1-5-connection-status-and-runtime-configuration (2026-03-27)
 
 - **testConnection toast indesiderato** [connection.ts + useApi.ts] — `useApi.post()` mostra sempre un toast su errore di rete. Durante `testConnection`, l'UI già mostra feedback inline; il toast è rumore. Fix richiede un'opzione `silent` in `useApi` o uso di fetch diretto.
-- **Error toast illimitati** [useToast.ts + AppHeader.vue] — toast di tipo error non hanno auto-dismiss e si impilano su retry multipli. Considerare un cap (es. max 3 toast contemporanei) o rimpiazzare toast esistente con stessa chiave.
+- ~~**Error toast illimitati**~~ — fixed 2026-04-08: error toasts auto-dismiss after 8s; cap at 3 concurrent error toasts (`MAX_ERROR_TOASTS`).
 - **fetchStores concorrente last-write-wins** [connection.ts:85-92] — chiamate parallele a `fetchStores()` (da mount + updateConnection) sovrascrivono `stores.value` in ordine non deterministico. Aggiungere un flag in-flight guard.
 - **loading flag condiviso** [connection.ts] — `loading` usato sia da `fetchConnection` che da `updateConnection`. Spinner sparisce mentre la seconda operazione è ancora in corso. Considerare flag separati o un contatore.
 - **StoreSelector usa Combobox raw** [StoreSelector.vue] — non usa il componente `SearchableSelect` (Story 1.3). Uniformare per consistenza del design system.
-- **Nessun messaggio "no results"** [StoreSelector.vue] — quando la ricerca non trova store, il dropdown scompare senza feedback. Aggiungere messaggio "No stores found".
+- ~~**Nessun messaggio "no results"**~~ — fixed in Epic 11: StoreSelector shows "No stores found" when search has no matches.
 
 ## Deferred from: code review of 1-3-design-system-foundation-and-base-components (2026-03-26)
 
@@ -132,7 +132,7 @@
 - **`req.body` cast redundancy** [connection.ts:17,30] — `req.body as { url: string }` is redundant because Zod validation already narrowed the type. Cosmetic cleanup only.
 - **Stack trace not in error handler logs** [middleware/error-handler.ts:14] — error log payload omits `err.stack`. Adds value for production debugging but increases log verbosity.
 - **Empty storeId in GET /api/connection** [connection.ts:11] — when `OPENFGA_STORE_ID` is not set, response includes `storeId: ""`. Could return `null` or omit the field. Frontend already handles this case.
-- **`validate` middleware coverage on future routes** [routes/stores.ts] — stores route does not yet exist; reminder to apply `validate()` middleware when it is created in Story 1.6.
+- ~~**`validate` middleware coverage on future routes**~~ — obsolete: Story 1.6 (Store Administration) is complete.
 - **`updateApiKey` dead code** [openfga-client.ts:23-25] — method is declared but no route calls it. Will become live when/if an API key update endpoint is added; low priority until then.
 
 ## Deferred from: code review of 11-2-connection-store-robustness-and-ux-polish (2026-04-03)
