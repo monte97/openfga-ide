@@ -36,16 +36,15 @@ describe('ToastContainer', () => {
     expect(wrapper.text()).not.toContain('Auto dismiss')
   })
 
-  it('error toast persists until manually dismissed', async () => {
+  it('error toast auto-dismisses after 8s', async () => {
     const { show } = useToast()
     const wrapper = mount(ToastContainer)
-    const id = show({ type: 'error', message: 'Persistent error' })
+    show({ type: 'error', message: 'Persistent error' })
     await wrapper.vm.$nextTick()
-    vi.advanceTimersByTime(10000)
+    vi.advanceTimersByTime(7999)
     await wrapper.vm.$nextTick()
     expect(wrapper.text()).toContain('Persistent error')
-    const { dismiss } = useToast()
-    dismiss(id)
+    vi.advanceTimersByTime(1)
     await wrapper.vm.$nextTick()
     expect(wrapper.text()).not.toContain('Persistent error')
   })

@@ -33,13 +33,14 @@ describe('useToast', () => {
     expect(toasts.some((t) => t.id === id)).toBe(false)
   })
 
-  it('error toast does NOT auto-dismiss', async () => {
+  it('error toast auto-dismisses after 8s', async () => {
     const { useToast } = await import('../useToast')
-    const { show, toasts, dismiss } = useToast()
+    const { show, toasts } = useToast()
     const id = show({ type: 'error', message: 'Critical error' })
-    vi.advanceTimersByTime(10000)
+    vi.advanceTimersByTime(7999)
     expect(toasts.some((t) => t.id === id)).toBe(true)
-    dismiss(id)
+    vi.advanceTimersByTime(1)
+    expect(toasts.some((t) => t.id === id)).toBe(false)
   })
 
   it('singleton behavior: same toasts array across multiple useToast() calls', async () => {

@@ -101,6 +101,7 @@ function makeSuiteStoreMock(overrides = {}) {
     updateTestCase: vi.fn(),
     removeTestCase: vi.fn(),
     removeGroup: vi.fn(),
+    cancelSave: vi.fn(),
     ...overrides,
   }
 }

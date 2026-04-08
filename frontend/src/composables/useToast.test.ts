@@ -35,11 +35,13 @@ describe('useToast', () => {
     expect(toasts).toHaveLength(0)
   })
 
-  it('error toasts do NOT auto-dismiss', () => {
+  it('error toasts auto-dismiss after 8 seconds', () => {
     const { show, toasts } = useToast()
     show({ type: 'error', message: 'Oops' })
-    vi.advanceTimersByTime(10000)
+    vi.advanceTimersByTime(7999)
     expect(toasts).toHaveLength(1)
+    vi.advanceTimersByTime(1)
+    expect(toasts).toHaveLength(0)
   })
 
   describe('error toast cap (AC5)', () => {

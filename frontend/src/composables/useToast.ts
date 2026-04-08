@@ -23,9 +23,7 @@ export function useToast() {
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const toast: Toast = { id, type, message }
 
-    if (type !== 'error') {
-      toast.timeoutId = setTimeout(() => dismiss(id), 5000)
-    }
+    toast.timeoutId = setTimeout(() => dismiss(id), type === 'error' ? 8000 : 5000)
 
     toasts.push(toast)
     return id

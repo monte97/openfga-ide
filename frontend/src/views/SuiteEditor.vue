@@ -67,6 +67,7 @@ function onKeydown(e: KeyboardEvent): void {
 }
 
 onMounted(async () => {
+  editorStore.setEditorMode('form')
   await suiteStore.fetchSuite(props.suite.id)
   window.addEventListener('keydown', onKeydown)
 })
