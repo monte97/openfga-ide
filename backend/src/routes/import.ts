@@ -1,4 +1,4 @@
-import { Router } from 'express'
+import { Router, type Request } from 'express'
 import { validate } from '../middleware/validate.js'
 import { importNewStoreBodySchema, importBodySchema, importParamsSchema } from '../schemas/import.js'
 import { importToNewStore, importToExistingStore } from '../services/import-service.js'
@@ -22,8 +22,8 @@ storeImportRouter.post(
   '/',
   validate(importParamsSchema, 'params'),
   validate(importBodySchema),
-  async (req, res) => {
-    const storeId = req.params['storeId'] as string
+  async (req: Request<{ storeId: string }>, res) => {
+    const storeId = req.params.storeId
     const { model, tuples } = req.body as { model: unknown; tuples: TupleKey[] }
     const result = await importToExistingStore(storeId, model, tuples)
     res.json(result)
