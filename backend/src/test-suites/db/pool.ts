@@ -45,10 +45,10 @@ export function initPool(): Promise<void> {
 }
 
 export async function closePool(): Promise<void> {
+  _initPromise = null // always reset so re-init is possible after close
   if (_pool) {
     _available = false // mark unavailable immediately so in-flight requests get 503 on next check
     await _pool.end()
     _pool = null
-    _initPromise = null // allow re-init if pool is restarted
   }
 }
