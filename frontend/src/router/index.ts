@@ -45,4 +45,11 @@ const router = createRouter({
   ],
 })
 
+router.onError((err, to) => {
+  if (err?.message?.includes('Failed to fetch dynamically imported module') ||
+      err?.message?.includes('Importing a module script failed')) {
+    window.location.href = to.fullPath
+  }
+})
+
 export default router
