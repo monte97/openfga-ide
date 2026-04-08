@@ -5,7 +5,7 @@ interface ApiOptions {
   silent?: boolean
 }
 
-function isAbortError(err: unknown): boolean {
+export function isAbortError(err: unknown): boolean {
   return err instanceof DOMException && err.name === 'AbortError'
 }
 

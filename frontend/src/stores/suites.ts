@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
-import { useApi } from '@/composables/useApi'
+import { useApi, isAbortError } from '@/composables/useApi'
 import { useToast } from '@/composables/useToast'
 import type { RunStatus, RunSummary } from '@/stores/runs'
 import type { ImportSuitePayload } from '@/schemas/suite'
@@ -127,7 +127,7 @@ export const useSuiteStore = defineStore('suites', () => {
           : { groups: [] },
       }
     } catch (err) {
-      if (controller.signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) return
+      if (controller.signal.aborted || isAbortError(err)) return
       errorSuite.value = (err as Error).message
     } finally {
       // Only clear loading if this is still the current in-flight fetch.
@@ -152,7 +152,7 @@ export const useSuiteStore = defineStore('suites', () => {
         activeSuite.value = { ...activeSuite.value, definition }
       }
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
+      if (isAbortError(err)) return
       throw err
     }
   }
