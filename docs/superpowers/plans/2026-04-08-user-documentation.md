@@ -62,7 +62,13 @@ Verify: `cat package.json | grep tsx` should show `"tsx": "..."`.
 
 - [ ] **Step 3: Add npm script to root package.json**
 
-Open `package.json` (root). The `scripts` block currently has only e2e scripts. Add:
+First, read the current `package.json` to see existing scripts:
+
+```bash
+cat package.json
+```
+
+Then edit `package.json` to add `docs:screenshots` to the `scripts` block. Keep every existing script intact. After the edit, the scripts block should look like this (assuming the baseline has only the three e2e scripts):
 
 ```json
 "scripts": {
@@ -72,6 +78,8 @@ Open `package.json` (root). The `scripts` block currently has only e2e scripts. 
   "test:e2e:report": "playwright show-report"
 }
 ```
+
+If the file contains additional scripts, preserve them alongside the new one.
 
 - [ ] **Step 4: Commit**
 
@@ -110,7 +118,7 @@ Create `docs/scripts/capture-screenshots.ts` with this content:
  *   - OpenFGA running and configured in the backend (OPENFGA_URL env var or
  *     previously set via the app's connection settings)
  *
- * Usage:
+ * Usage (must be run from the project root):
  *   npm run docs:screenshots
  */
 
@@ -120,8 +128,12 @@ import * as path from 'path'
 
 const APP_URL = process.env.APP_URL ?? 'http://localhost:5173'
 const BACKEND_URL = process.env.BACKEND_URL ?? 'http://localhost:3000'
-const SHOTS_DIR = path.resolve(__dirname, '..', 'assets', 'screenshots')
-const DEMO_FILE = path.resolve(__dirname, '..', '..', 'demo', 'demo-document-sharing.json')
+// Paths are anchored to the project root (where `npm run` is executed).
+// We avoid __dirname/import.meta.url because the script must work under both
+// CommonJS and ESM without conditional logic.
+const PROJECT_ROOT = process.cwd()
+const SHOTS_DIR = path.resolve(PROJECT_ROOT, 'docs', 'assets', 'screenshots')
+const DEMO_FILE = path.resolve(PROJECT_ROOT, 'demo', 'demo-document-sharing.json')
 const LS_KEY = 'openfga-viewer:selectedStoreId'
 const VIEWPORT = { width: 1440, height: 900 }
 
@@ -143,16 +155,24 @@ async function api<T = unknown>(urlPath: string, opts: RequestInit = {}): Promis
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Demo fixture loader
+// ──────────────────────────────────────────────────────────────────────────────
+
+type DemoFixture = {
+  storeName: string
+  model: unknown
+  tuples: Array<{ user: string; relation: string; object: string }>
+}
+
+function loadDemoFixture(): DemoFixture {
+  return JSON.parse(fs.readFileSync(DEMO_FILE, 'utf-8')) as DemoFixture
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // State setup
 // ──────────────────────────────────────────────────────────────────────────────
 
-async function setupDemoStore(): Promise<string> {
-  const demo = JSON.parse(fs.readFileSync(DEMO_FILE, 'utf-8')) as {
-    storeName: string
-    model: unknown
-    tuples: Array<{ user: string; relation: string; object: string }>
-  }
-
+async function setupDemoStore(demo: DemoFixture): Promise<string> {
   // Create a fresh store
   const store = await api<{ id: string }>('/api/stores', {
     method: 'POST',
@@ -169,8 +189,13 @@ async function setupDemoStore(): Promise<string> {
   return store.id
 }
 
-async function createDemoSuite(): Promise<string> {
-  // Suites are global (not per-store). The suite API does not require a storeId.
+async function createDemoSuite(demo: DemoFixture): Promise<string> {
+  // Suites are global (not per-store). The backend Zod schema requires:
+  //   - expected: boolean (not string 'allowed'/'denied')
+  //   - description/tags/severity nested under meta
+  //   - severity enum: 'critical' | 'warning' | 'info'
+  // The fixture MUST embed a real model + tuples — the run engine provisions an
+  // ephemeral store from the fixture and fails if the model is null/missing.
   const suite = await api<{ id: string }>('/api/suites', {
     method: 'POST',
     body: JSON.stringify({
@@ -184,73 +209,87 @@ async function createDemoSuite(): Promise<string> {
             description: 'Alice owns folder:engineering and its documents',
             testCases: [
               {
-                description: 'Alice can view her own document',
                 user: 'user:alice',
                 relation: 'viewer',
                 object: 'document:roadmap',
-                expected: 'allowed',
-                severity: 'critical',
+                expected: true,
+                meta: {
+                  description: 'Alice can view her own document',
+                  severity: 'critical',
+                },
               },
               {
-                description: 'Alice can edit her own document',
                 user: 'user:alice',
                 relation: 'editor',
                 object: 'document:roadmap',
-                expected: 'allowed',
-                severity: 'critical',
+                expected: true,
+                meta: {
+                  description: 'Alice can edit her own document',
+                  severity: 'critical',
+                },
               },
               {
-                description: 'Alice cannot be denied as owner',
                 user: 'user:alice',
                 relation: 'owner',
                 object: 'document:roadmap',
-                expected: 'allowed',
-                severity: 'critical',
+                expected: true,
+                meta: {
+                  description: 'Alice is the direct owner',
+                  severity: 'critical',
+                },
               },
             ],
           },
           {
             name: 'Team access via groups',
-            description: 'Group membership grants access transitively',
+            description: 'Group membership grants access transitively through folders',
             testCases: [
               {
-                description: 'Bob (backend-team) can edit roadmap',
                 user: 'user:bob',
                 relation: 'editor',
                 object: 'document:roadmap',
-                expected: 'allowed',
-                severity: 'high',
+                expected: true,
+                meta: {
+                  description: 'Bob (backend-team) can edit roadmap via folder parent',
+                  severity: 'warning',
+                },
               },
               {
-                description: 'Dave (frontend-team) can only view roadmap',
                 user: 'user:dave',
                 relation: 'viewer',
                 object: 'document:roadmap',
-                expected: 'allowed',
-                severity: 'high',
+                expected: true,
+                meta: {
+                  description: 'Dave has direct viewer access to roadmap',
+                  severity: 'warning',
+                },
               },
               {
-                description: 'Dave cannot edit roadmap',
                 user: 'user:dave',
                 relation: 'editor',
                 object: 'document:roadmap',
-                expected: 'denied',
-                severity: 'high',
+                expected: false,
+                meta: {
+                  description: 'Dave cannot edit roadmap (only viewer)',
+                  severity: 'warning',
+                },
               },
               {
-                description: 'Grace can view onboarding doc directly',
                 user: 'user:grace',
                 relation: 'viewer',
                 object: 'document:onboarding',
-                expected: 'allowed',
-                severity: 'medium',
+                expected: true,
+                meta: {
+                  description: 'Grace has direct viewer access to onboarding doc',
+                  severity: 'info',
+                },
               },
             ],
           },
         ],
         fixture: {
-          model: null,
-          tuples: [],
+          model: demo.model,
+          tuples: demo.tuples,
         },
       },
     }),
@@ -272,8 +311,8 @@ async function shot(page: Page, name: string): Promise<void> {
 }
 
 async function waitForApp(page: Page): Promise<void> {
-  // Wait for the app shell (nav bar) to be visible
-  await page.waitForSelector('[data-testid="app-header"], nav, header', { timeout: 15_000 })
+  // Wait for the app shell (header with connection popover button) to be visible
+  await page.waitForSelector('[aria-label="Toggle connection settings"]', { timeout: 15_000 })
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -284,9 +323,13 @@ async function main(): Promise<void> {
   fs.mkdirSync(SHOTS_DIR, { recursive: true })
 
   // ── Setup ──────────────────────────────────────────────────────────────────
-  console.log('\n[docs:screenshots] Setting up demo state...')
-  const storeId = await setupDemoStore()
-  const suiteId = await createDemoSuite()
+  console.log('\n[docs:screenshots] Loading demo fixture...')
+  const demo = loadDemoFixture()
+
+  console.log('[docs:screenshots] Setting up demo state...')
+  const storeId = await setupDemoStore(demo)
+  const suiteId = await createDemoSuite(demo)
+  void suiteId // suite is discovered via its name in the UI; id not needed here
 
   // ── Browser ────────────────────────────────────────────────────────────────
   console.log('[docs:screenshots] Launching browser...')
@@ -306,122 +349,155 @@ async function main(): Promise<void> {
     console.log('[docs:screenshots] Capturing connection.png...')
     await page.goto(APP_URL)
     await waitForApp(page)
-    // Open the connection popover by clicking the status indicator in the header
-    await page.getByRole('button', { name: /connection|configure/i }).first().click()
-    await page.waitForTimeout(400)
+    // The ConnectionPopover trigger has aria-label="Toggle connection settings"
+    await page.locator('[aria-label="Toggle connection settings"]').click()
+    await page.waitForTimeout(300)
+    // First view of the popover shows "Edit Connection" — click it to reveal
+    // the URL field + Test/Save buttons, which is what the docs describe.
+    await page.getByRole('button', { name: 'Edit Connection' }).click()
+    await page.waitForTimeout(300)
     await shot(page, 'connection.png')
-    // Close the popover
+    // Close the popover by clicking elsewhere
     await page.keyboard.press('Escape')
+    await page.waitForTimeout(200)
 
     // ── 2. Model Viewer — DSL ────────────────────────────────────────────────
     console.log('[docs:screenshots] Capturing model-viewer-dsl.png...')
     await page.goto(`${APP_URL}/model-viewer`)
-    await page.waitForTimeout(800)
+    await page.waitForTimeout(1200)
     await shot(page, 'model-viewer-dsl.png')
 
     // ── 3. Model Viewer — Graph ──────────────────────────────────────────────
     console.log('[docs:screenshots] Capturing model-viewer-graph.png...')
+    // ModelViewer has two tabs: DSL and Graph — click Graph
     await page.getByRole('tab', { name: /graph/i }).click()
-    await page.waitForTimeout(1200) // wait for Vue Flow to render
+    await page.waitForTimeout(1500) // wait for Vue Flow to render nodes
     await shot(page, 'model-viewer-graph.png')
 
     // ── 4. Tuple Manager ────────────────────────────────────────────────────
     console.log('[docs:screenshots] Capturing tuples.png...')
     await page.goto(`${APP_URL}/tuple-manager`)
-    await page.waitForTimeout(800)
+    await page.waitForTimeout(1000)
     await shot(page, 'tuples.png')
 
     // ── 5. Query Console — Check ─────────────────────────────────────────────
     console.log('[docs:screenshots] Capturing query-check.png...')
     await page.goto(`${APP_URL}/query-console`)
-    await page.waitForTimeout(600)
-    // Fill in a Check query: alice is viewer of document:roadmap → allowed
-    await page.getByLabel(/user/i).first().fill('user:alice')
-    await page.getByLabel(/relation/i).first().fill('viewer')
-    await page.getByLabel(/object/i).first().fill('document:roadmap')
-    await page.getByRole('button', { name: /check/i }).first().click()
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(800)
+    // CheckQuery uses AppInput wrappers with placeholders (user:alice, document:roadmap)
+    // and an AppSelect (Headless UI Listbox) for relation.
+    await page.locator('input[placeholder="user:alice"]').fill('user:alice')
+    await page.locator('input[placeholder="document:roadmap"]').fill('document:roadmap')
+    // Open the relation Listbox. The button's initial text is "Select relation..."
+    // (after the model loads). Use a text-content filter.
+    await page.locator('button').filter({ hasText: /select relation/i }).click()
+    await page.waitForTimeout(200)
+    await page.getByRole('option', { name: 'viewer' }).click()
+    await page.getByRole('button', { name: 'Check' }).click()
+    await page.waitForTimeout(1200)
     await shot(page, 'query-check.png')
 
     // ── 6. Query Console — List Objects ──────────────────────────────────────
     console.log('[docs:screenshots] Capturing query-list.png...')
+    // QueryConsole has tabs: Check / List Objects / List Users / Expand
     await page.getByRole('tab', { name: /list objects/i }).click()
     await page.waitForTimeout(400)
-    await page.getByLabel(/user/i).fill('user:alice')
-    await page.getByLabel(/relation/i).fill('viewer')
-    await page.getByLabel(/type/i).fill('document')
-    await page.getByRole('button', { name: /list/i }).first().click()
-    await page.waitForTimeout(1000)
+    await page.locator('input[placeholder="user:alice"]').first().fill('user:alice')
+    // Relation and type are both dropdowns in ListObjectsQuery — use a safe filter
+    const listButtons = page.locator('button').filter({ hasText: /select relation|load model/i })
+    await listButtons.first().click()
+    await page.waitForTimeout(200)
+    await page.getByRole('option', { name: 'viewer' }).click()
+    const typeButtons = page.locator('button').filter({ hasText: /select type|load model/i })
+    await typeButtons.first().click()
+    await page.waitForTimeout(200)
+    await page.getByRole('option', { name: 'document' }).click()
+    await page.getByRole('button', { name: /list objects/i }).click()
+    await page.waitForTimeout(1200)
     await shot(page, 'query-list.png')
 
     // ── 7. Query Console — Expand ────────────────────────────────────────────
     console.log('[docs:screenshots] Capturing query-expand.png...')
-    await page.getByRole('tab', { name: /expand/i }).click()
+    await page.getByRole('tab', { name: /^expand$/i }).click()
     await page.waitForTimeout(400)
-    await page.getByLabel(/relation/i).fill('viewer')
-    await page.getByLabel(/object/i).fill('document:roadmap')
-    await page.getByRole('button', { name: /expand/i }).first().click()
-    await page.waitForTimeout(1000)
+    await page.locator('input[placeholder="document:roadmap"]').first().fill('document:roadmap')
+    await page.locator('button').filter({ hasText: /select relation|load model/i }).first().click()
+    await page.waitForTimeout(200)
+    await page.getByRole('option', { name: 'viewer' }).click()
+    await page.getByRole('button', { name: /^expand$/i }).click()
+    await page.waitForTimeout(1200)
     await shot(page, 'query-expand.png')
 
     // ── 8. Relationship Graph ────────────────────────────────────────────────
     console.log('[docs:screenshots] Capturing relationship-graph.png...')
     await page.goto(`${APP_URL}/relationship-graph`)
-    await page.waitForTimeout(2000) // Vue Flow graph takes time to layout
+    await page.waitForTimeout(2500) // Vue Flow graph needs layout time
     await shot(page, 'relationship-graph.png')
 
     // ── 9. Import/Export ────────────────────────────────────────────────────
     console.log('[docs:screenshots] Capturing import-export.png...')
     await page.goto(`${APP_URL}/import-export`)
-    await page.waitForTimeout(600)
+    await page.waitForTimeout(800)
     await shot(page, 'import-export.png')
 
     // ── 10. Test Suites — List ───────────────────────────────────────────────
     console.log('[docs:screenshots] Capturing test-suites-list.png...')
     await page.goto(`${APP_URL}/test-suites`)
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(1200)
     await shot(page, 'test-suites-list.png')
 
     // ── 11. Suite Editor — Form tab ──────────────────────────────────────────
     console.log('[docs:screenshots] Capturing suite-editor-form.png...')
-    // Click the suite card to switch to the Editor tab
-    await page.getByRole('article', { name: /Document Sharing Smoke Tests/i }).click()
-    await page.waitForTimeout(800)
+    // SuiteCard has role="article" with aria-label="Suite: <name>"
+    // Clicking it emits 'open' which TestSuites.vue handles by switching to Editor tab
+    await page.getByRole('article', { name: 'Suite: Document Sharing Smoke Tests' }).click()
+    await page.waitForTimeout(1000)
     await shot(page, 'suite-editor-form.png')
 
     // ── 12. Suite Editor — JSON tab ──────────────────────────────────────────
     console.log('[docs:screenshots] Capturing suite-editor-json.png...')
-    await page.getByRole('tab', { name: /json/i }).click()
-    await page.waitForTimeout(400)
+    // Inside the editor, the sub-tabs are Form / JSON / Fixture (manual tablist)
+    await page.getByRole('tab', { name: 'JSON' }).click()
+    await page.waitForTimeout(500)
     await shot(page, 'suite-editor-json.png')
 
     // ── 13. Suite Editor — Fixture tab ───────────────────────────────────────
     console.log('[docs:screenshots] Capturing suite-editor-fixture.png...')
-    await page.getByRole('tab', { name: /fixture/i }).click()
-    await page.waitForTimeout(400)
+    await page.getByRole('tab', { name: 'Fixture' }).click()
+    await page.waitForTimeout(500)
     await shot(page, 'suite-editor-fixture.png')
 
     // ── 14. Test Execution — Running ─────────────────────────────────────────
     console.log('[docs:screenshots] Capturing test-execution-running.png...')
-    // Go back to suites list tab and trigger a run
-    await page.getByRole('tab', { name: /suites/i }).click()
+    // The Run Suite button lives inside SuiteEditor (not on the card).
+    // data-testid="run-suite-button", enabled because hasFixture is true.
+    // Return to the Form tab so the screenshot shows a familiar layout.
+    await page.getByRole('tab', { name: 'Form' }).click()
     await page.waitForTimeout(400)
-    // Click the Run button on the suite card
-    await page.getByRole('button', { name: /run/i }).first().click()
-    // Screenshot immediately to catch the running/provisioning state
-    await page.waitForTimeout(600)
+    await page.getByTestId('run-suite-button').click()
+    // Screenshot immediately to catch the provisioning/running state
+    await page.waitForTimeout(500)
     await shot(page, 'test-execution-running.png')
 
     // ── 15. Test Execution — Results ─────────────────────────────────────────
     console.log('[docs:screenshots] Capturing test-execution-results.png...')
-    // Wait for the run to complete (up to 30s)
-    await page.waitForSelector('[data-testid="run-complete"], [aria-label*="complete"], .run-status-complete', {
-      timeout: 30_000,
-    }).catch(() => {
-      // If selector not found, just wait a fixed amount and screenshot anyway
-      return page.waitForTimeout(8000)
-    })
-    await page.waitForTimeout(500)
+    // Wait for the run to complete. The Run Suite button is loading while
+    // isRunning is true; when the run reaches a terminal status, the loading
+    // state is removed. We poll the button's disabled attribute.
+    await page
+      .waitForFunction(
+        () => {
+          const btn = document.querySelector('[data-testid="run-suite-button"]') as HTMLButtonElement | null
+          if (!btn) return false
+          // During run: disabled=true (loading). After terminal status: disabled=false.
+          return !btn.disabled
+        },
+        { timeout: 25_000 },
+      )
+      .catch(() => {
+        console.warn('  [warn] Run did not complete within 25s — taking screenshot anyway')
+      })
+    await page.waitForTimeout(800)
     await shot(page, 'test-execution-results.png')
 
     console.log('\n[docs:screenshots] ✅ All 15 screenshots captured.')
@@ -559,16 +635,15 @@ Open [http://localhost:5173](http://localhost:5173) in your browser.
 
 ## First Connection
 
-On first launch, the app shows a **connection banner**. Click **Configure** to open the connection panel:
+Click the **connection badge** in the top-right header to open the connection popover. Click **Edit Connection**, then:
 
 1. Enter your OpenFGA URL (e.g. `http://localhost:8080`)
-2. Optionally enter a **Store ID** to connect directly to an existing store
-3. Click **Test connection** — a green indicator confirms success
-4. Click **Save**
+2. Click **Test** — a green check mark confirms the URL is reachable
+3. Click **Save**
 
 ![Connection panel](../assets/screenshots/connection.png)
 
-Once connected, the store selector in the header lets you switch between stores.
+Once connected, use the store selector dropdown in the header to pick a store (or create one in **Store Admin** if the instance has none).
 
 ## Loading the Demo Dataset
 
@@ -589,7 +664,7 @@ The demo dataset is used in all documentation screenshots.
 docker compose up
 ```
 
-The app is available at [http://localhost:5174](http://localhost:5174) (Docker port) with the backend at port 3001.
+The app is available at [http://localhost:5173](http://localhost:5173) with the backend at port 3000 (same ports as the bare-host dev setup). An isolated E2E environment lives in `docker-compose.e2e.yml` and uses ports 5174 / 3001.
 
 ## Next Steps
 
@@ -621,17 +696,19 @@ openfga-viewer connects to one OpenFGA instance at a time. Within that instance,
 
 ## Connection Configuration
 
-Click the **connection indicator** in the top-right header to open the connection panel.
+Click the **connection indicator** in the top-right header (the colored badge) to open the connection popover. The popover first shows the current URL and a status badge.
+
+Click **Edit Connection** to edit. You'll see:
 
 ![Connection panel](../assets/screenshots/connection.png)
 
 | Field | Description |
 |-------|-------------|
 | **URL** | The base URL of your OpenFGA HTTP API (e.g. `http://localhost:8080`) |
-| **Store ID** | Optional. If provided, the viewer connects directly to this store on startup |
-| **API Key** | Optional. For OpenFGA instances with API key authentication |
 
-Click **Test connection** to verify. A green dot in the header confirms an active connection. A red dot means the URL is unreachable or authentication failed.
+Click **Test** to verify that the URL is reachable. A green check mark appears below the field on success. Once the test succeeds, the **Save** button becomes enabled — click it to persist the URL.
+
+A green dot in the header confirms an active connection. A red dot means the URL is unreachable.
 
 ## Selecting a Store
 
@@ -1051,10 +1128,10 @@ Each test case specifies a permission check.
 | User | The entity requesting access | `user:alice` |
 | Relation | The relation being checked | `viewer` |
 | Object | The resource being accessed | `document:roadmap` |
-| Expected | The expected result | `allowed` or `denied` |
+| Expected | The expected result | `allowed` or `denied` (stored as `true`/`false` in JSON) |
 | Description | Optional human-readable label | "Alice can read her doc" |
 | Tags | Optional labels for filtering | `smoke`, `critical` |
-| Severity | Optional risk level | `critical`, `high`, `medium`, `low` |
+| Severity | Optional risk level | `critical`, `warning`, `info` |
 
 Fields for User, Relation, and Object support autocomplete from the active store's model.
 
@@ -1085,16 +1162,21 @@ The JSON structure:
           "user": "user:alice",
           "relation": "viewer",
           "object": "document:roadmap",
-          "expected": "allowed",
-          "description": "Optional label",
-          "tags": [],
-          "severity": "critical"
+          "expected": true,
+          "meta": {
+            "description": "Optional label",
+            "tags": [],
+            "severity": "critical"
+          }
         }
       ]
     }
   ]
 }
 ```
+
+- **`expected`** is a boolean: `true` means the check should return allowed, `false` means denied.
+- **`meta`** holds optional metadata (description, tags, severity). The severity enum is `"critical" | "warning" | "info"`.
 
 > **Note:** The JSON editor does not include the fixture definition. Use the Fixture tab for that.
 
@@ -1147,9 +1229,9 @@ git commit -m "docs(en): add suite-editor page"
 
 ## Triggering a Run
 
-From the **Test Suites** list, click the **▶ Run** button on any suite card. The suite switches to the **Runs** tab and the execution begins immediately.
+Open a suite from the **Test Suites** list. In the editor header, click the **Run Suite** button to start execution.
 
-Alternatively, click a suite to open it in the Editor, then click **Run** in the top-right corner.
+> **Note:** The Run Suite button is disabled until the suite has a fixture. A fixture (model + tuples) is always required — it defines the ephemeral store against which every test case is executed. If the button is disabled, switch to the **Fixture** tab and define or import a fixture first.
 
 ## Execution Phases
 
@@ -1160,11 +1242,11 @@ Each run goes through four phases shown in a timeline:
 | Phase | Description |
 |-------|-------------|
 | **Provisioning** | An ephemeral OpenFGA store is created for this run |
-| **Loading fixtures** | The suite's fixture (model + tuples) is loaded into the ephemeral store. Skipped if no fixture is defined — the active store's data is used instead |
-| **Running tests** | Each test case is executed as a `Check` call against the ephemeral store |
+| **Loading fixtures** | The suite's fixture (model + tuples) is loaded into the ephemeral store |
+| **Running checks** | Each test case is executed as a `Check` call against the ephemeral store |
 | **Cleanup** | The ephemeral store is deleted, regardless of pass/fail outcome |
 
-The viewer polls for updates every 2 seconds. If polling encounters 5 consecutive errors, it stops automatically and shows a **Retry** button.
+The viewer polls for run updates every 2 seconds. If polling encounters 5 consecutive errors, it stops automatically and shows a **Retry** button.
 
 ## Reading Results
 
@@ -1253,16 +1335,15 @@ Apri [http://localhost:5173](http://localhost:5173) nel browser.
 
 ## Prima Connessione
 
-Al primo avvio, l'app mostra un **banner di connessione**. Clicca **Configura** per aprire il pannello di connessione:
+Clicca sul **badge di connessione** nell'header in alto a destra per aprire il popover di connessione. Clicca **Edit Connection**, poi:
 
 1. Inserisci l'URL di OpenFGA (es. `http://localhost:8080`)
-2. Opzionalmente inserisci uno **Store ID** per connetterti direttamente a uno store esistente
-3. Clicca **Test connessione** — un indicatore verde conferma il successo
-4. Clicca **Salva**
+2. Clicca **Test** — una spunta verde conferma che l'URL è raggiungibile
+3. Clicca **Save**
 
 ![Pannello di connessione](../assets/screenshots/connection.png)
 
-Una volta connessa, il selettore store nell'header permette di cambiare store.
+Una volta connessa, usa il dropdown di selezione store nell'header per scegliere uno store (o creane uno in **Store Admin** se l'istanza non ne ha).
 
 ## Caricare il Dataset Demo
 
@@ -1283,7 +1364,7 @@ Questo dataset è usato in tutti gli screenshot della documentazione.
 docker compose up
 ```
 
-L'app è disponibile su [http://localhost:5174](http://localhost:5174) (porta Docker) con il backend sulla porta 3001.
+L'app è disponibile su [http://localhost:5173](http://localhost:5173) con il backend sulla porta 3000 (stesse porte del setup dev bare-host). Un ambiente E2E isolato è definito in `docker-compose.e2e.yml` e usa le porte 5174 / 3001.
 
 ## Passi Successivi
 
@@ -1315,17 +1396,19 @@ openfga-viewer si connette a un'istanza OpenFGA alla volta. All'interno di quell
 
 ## Configurazione della Connessione
 
-Clicca sull'**indicatore di connessione** nell'header in alto a destra per aprire il pannello di connessione.
+Clicca sull'**indicatore di connessione** nell'header in alto a destra (il badge colorato) per aprire il popover di connessione. Il popover mostra prima l'URL corrente e un badge di stato.
+
+Clicca **Edit Connection** per modificare. Vedrai:
 
 ![Pannello di connessione](../assets/screenshots/connection.png)
 
 | Campo | Descrizione |
 |-------|-------------|
 | **URL** | L'URL base dell'API HTTP di OpenFGA (es. `http://localhost:8080`) |
-| **Store ID** | Opzionale. Se fornito, il viewer si connette direttamente a questo store all'avvio |
-| **API Key** | Opzionale. Per istanze OpenFGA con autenticazione tramite API key |
 
-Clicca **Test connessione** per verificare. Un punto verde nell'header conferma una connessione attiva. Un punto rosso indica che l'URL non è raggiungibile o l'autenticazione è fallita.
+Clicca **Test** per verificare che l'URL sia raggiungibile. Una spunta verde appare sotto il campo in caso di successo. Una volta che il test passa, il bottone **Save** diventa abilitato — cliccalo per salvare l'URL.
+
+Un punto verde nell'header conferma una connessione attiva. Un punto rosso indica che l'URL non è raggiungibile.
 
 ## Selezionare uno Store
 
@@ -1745,10 +1828,10 @@ Ogni test case specifica un controllo sui permessi.
 | User | L'entità che richiede l'accesso | `user:alice` |
 | Relation | La relazione da controllare | `viewer` |
 | Object | La risorsa a cui si accede | `document:roadmap` |
-| Expected | Il risultato atteso | `allowed` o `denied` |
+| Expected | Il risultato atteso | `allowed` o `denied` (salvato come `true`/`false` nel JSON) |
 | Description | Etichetta leggibile opzionale | "Alice può leggere il suo documento" |
 | Tags | Etichette opzionali per il filtraggio | `smoke`, `critical` |
-| Severity | Livello di rischio opzionale | `critical`, `high`, `medium`, `low` |
+| Severity | Livello di rischio opzionale | `critical`, `warning`, `info` |
 
 I campi User, Relation e Object supportano l'autocomplete dal modello dello store attivo.
 
@@ -1779,16 +1862,21 @@ La struttura JSON:
           "user": "user:alice",
           "relation": "viewer",
           "object": "document:roadmap",
-          "expected": "allowed",
-          "description": "Etichetta opzionale",
-          "tags": [],
-          "severity": "critical"
+          "expected": true,
+          "meta": {
+            "description": "Etichetta opzionale",
+            "tags": [],
+            "severity": "critical"
+          }
         }
       ]
     }
   ]
 }
 ```
+
+- **`expected`** è un booleano: `true` significa che il check dovrebbe restituire allowed, `false` significa denied.
+- **`meta`** contiene i metadati opzionali (description, tags, severity). L'enum di severity è `"critical" | "warning" | "info"`.
 
 > **Nota:** L'editor JSON non include la definizione della fixture. Usa la tab Fixture per quella.
 
@@ -1841,9 +1929,9 @@ git commit -m "docs(it): add editor-della-suite page"
 
 ## Avviare un'Esecuzione
 
-Dalla lista **Test Suites**, clicca il pulsante **▶ Esegui** sulla card di qualsiasi suite. La suite passa alla tab **Runs** e l'esecuzione inizia immediatamente.
+Apri una suite dalla lista **Test Suites**. Nell'header dell'editor, clicca il pulsante **Run Suite** per avviare l'esecuzione.
 
-In alternativa, clicca una suite per aprirla nell'Editor, poi clicca **Esegui** nell'angolo in alto a destra.
+> **Nota:** Il pulsante Run Suite è disabilitato finché la suite non ha una fixture. Una fixture (modello + tuple) è sempre obbligatoria — definisce lo store effimero contro cui viene eseguito ogni test case. Se il pulsante è disabilitato, vai alla tab **Fixture** e definisci o importa una fixture prima.
 
 ## Fasi di Esecuzione
 
@@ -1854,11 +1942,11 @@ Ogni esecuzione attraversa quattro fasi mostrate in una timeline:
 | Fase | Descrizione |
 |------|-------------|
 | **Provisioning** | Viene creato uno store OpenFGA effimero per questa esecuzione |
-| **Caricamento fixture** | La fixture della suite (modello + tuple) viene caricata nello store effimero. Saltata se non è definita nessuna fixture — vengono usati i dati dello store attivo |
-| **Esecuzione test** | Ogni test case viene eseguito come chiamata `Check` contro lo store effimero |
-| **Pulizia** | Lo store effimero viene eliminato, indipendentemente dall'esito |
+| **Loading fixtures** | La fixture della suite (modello + tuple) viene caricata nello store effimero |
+| **Running checks** | Ogni test case viene eseguito come chiamata `Check` contro lo store effimero |
+| **Cleanup** | Lo store effimero viene eliminato, indipendentemente dall'esito |
 
-Il viewer effettua il polling per gli aggiornamenti ogni 2 secondi. Se il polling incontra 5 errori consecutivi, si ferma automaticamente e mostra un pulsante **Riprova**.
+Il viewer effettua il polling per gli aggiornamenti del run ogni 2 secondi. Se il polling incontra 5 errori consecutivi, si ferma automaticamente e mostra un pulsante **Riprova**.
 
 ## Leggere i Risultati
 
