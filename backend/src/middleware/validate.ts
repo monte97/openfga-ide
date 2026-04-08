@@ -13,6 +13,8 @@ export function validate(schema: ZodType, target: 'body' | 'params' | 'query' = 
       return
     }
     if (target === 'body') req.body = result.data
+    else if (target === 'params') Object.assign(req.params, result.data)
+    else if (target === 'query') Object.assign(req.query, result.data)
     next()
   }
 }
