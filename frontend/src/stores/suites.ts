@@ -103,11 +103,12 @@ export const useSuiteStore = defineStore('suites', () => {
 
   async function fetchSuite(id: string): Promise<void> {
     fetchAbort?.abort()
-    fetchAbort = new AbortController()
+    const controller = new AbortController()
+    fetchAbort = controller
     loadingSuite.value = true
     errorSuite.value = null
     try {
-      const data = await api.get<Suite>(`suites/${id}`, fetchAbort.signal)
+      const data = await api.get<Suite>(`suites/${id}`, controller.signal)
       // Backend does not persist group/testCase IDs — assign locally on load
       activeSuite.value = {
         ...data,
@@ -126,10 +127,14 @@ export const useSuiteStore = defineStore('suites', () => {
           : { groups: [] },
       }
     } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
+      if (controller.signal.aborted || (err instanceof DOMException && err.name === 'AbortError')) return
       errorSuite.value = (err as Error).message
     } finally {
-      loadingSuite.value = false
+      // Only clear loading if this is still the current in-flight fetch.
+      // If a newer fetchSuite() has already started, it owns loadingSuite.
+      if (fetchAbort === controller) {
+        loadingSuite.value = false
+      }
     }
   }
 

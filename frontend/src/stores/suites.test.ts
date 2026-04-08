@@ -195,6 +195,27 @@ describe('useSuiteStore', () => {
       expect(store.activeSuite).toBeNull()
       expect(store.errorSuite).toBeNull()
     })
+
+    it('keeps loadingSuite true while second fetch is in flight after aborting first', async () => {
+      const { useSuiteStore } = await import('./suites')
+      const store = useSuiteStore()
+      let resolveSecond!: (v: unknown) => void
+      fetchMock
+        .mockImplementationOnce(() => new Promise((resolve) => {
+          // First fetch resolves immediately (but will be aborted)
+          resolve({ ok: true, json: async () => fullSuite })
+        }))
+        .mockImplementationOnce(() => new Promise((resolve) => { resolveSecond = resolve }))
+
+      const first = store.fetchSuite('suite-1')
+      // Second fetch starts before first settles — aborts first
+      store.fetchSuite('suite-2')
+      await first
+      // First is done (aborted), second is still in flight — loadingSuite must stay true
+      expect(store.loadingSuite).toBe(true)
+      // Now let second finish
+      resolveSecond({ ok: true, json: async () => ({ ...fullSuite, id: 'suite-2' }) })
+    })
   })
 
   describe('saveDefinition()', () => {
