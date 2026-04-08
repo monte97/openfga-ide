@@ -3,8 +3,12 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useToast } from '@/composables/useToast'
 
 const pushMock = vi.fn()
+let currentPath = '/store-admin'
 vi.mock('vue-router', () => ({
-  useRouter: () => ({ push: pushMock }),
+  useRouter: () => ({
+    push: pushMock,
+    currentRoute: { value: { get path() { return currentPath } } },
+  }),
 }))
 
 const fetchMock = vi.fn()
@@ -23,6 +27,7 @@ describe('useStoresStore', () => {
     setActivePinia(createPinia())
     fetchMock.mockReset()
     pushMock.mockReset()
+    currentPath = '/store-admin'
     const { toasts, dismiss } = useToast()
     ;[...toasts].forEach((t) => dismiss(t.id))
   })
@@ -33,7 +38,6 @@ describe('useStoresStore', () => {
     expect(store.storeList).toEqual([])
     expect(store.loading).toBe(false)
     expect(store.error).toBeNull()
-    expect(store.hasNavigatedThisSession).toBe(false)
   })
 
   describe('fetchStores()', () => {
@@ -140,7 +144,8 @@ describe('useStoresStore', () => {
   })
 
   describe('selectStore()', () => {
-    it('navigates to /model-viewer on first selection', async () => {
+    it('navigates to /model-viewer when on /store-admin', async () => {
+      currentPath = '/store-admin'
       const { useStoresStore } = await import('../stores')
       const { useConnectionStore } = await import('../connection')
       const connectionStore = useConnectionStore()
@@ -149,15 +154,30 @@ describe('useStoresStore', () => {
       store.selectStore('store-1')
       expect(connectionStore.storeId).toBe('store-1')
       expect(pushMock).toHaveBeenCalledWith('/model-viewer')
-      expect(store.hasNavigatedThisSession).toBe(true)
     })
 
-    it('does NOT navigate on subsequent selections', async () => {
+    it('navigates to /model-viewer when on /', async () => {
+      currentPath = '/'
       const { useStoresStore } = await import('../stores')
       const store = useStoresStore()
 
       store.selectStore('store-1')
-      pushMock.mockReset()
+      expect(pushMock).toHaveBeenCalledWith('/model-viewer')
+    })
+
+    it('does NOT navigate when already on a content page', async () => {
+      currentPath = '/model-viewer'
+      const { useStoresStore } = await import('../stores')
+      const store = useStoresStore()
+
+      store.selectStore('store-1')
+      expect(pushMock).not.toHaveBeenCalled()
+    })
+
+    it('does NOT navigate when on /query-console', async () => {
+      currentPath = '/query-console'
+      const { useStoresStore } = await import('../stores')
+      const store = useStoresStore()
 
       store.selectStore('store-2')
       expect(pushMock).not.toHaveBeenCalled()

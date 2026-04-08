@@ -25,7 +25,6 @@ export const useStoresStore = defineStore('stores', () => {
   const storeList = ref<StoreInfo[]>([])
   const loading = ref(false)
   const error = ref<string | null>(null)
-  const hasNavigatedThisSession = ref(false)
 
   async function fetchStores() {
     loading.value = true
@@ -58,11 +57,14 @@ export const useStoresStore = defineStore('stores', () => {
     toast.show({ type: 'success', message: 'Store deleted' })
   }
 
+  // Routes where selecting a store should redirect to model-viewer.
+  // On content pages the user is already working — don't interrupt.
+  const REDIRECT_PATHS = new Set(['/', '/store-admin'])
+
   function selectStore(storeId: string) {
     const connectionStore = useConnectionStore()
     connectionStore.selectStore(storeId)
-    if (!hasNavigatedThisSession.value) {
-      hasNavigatedThisSession.value = true
+    if (REDIRECT_PATHS.has(router.currentRoute.value.path)) {
       router.push('/model-viewer')
     }
   }
@@ -71,7 +73,6 @@ export const useStoresStore = defineStore('stores', () => {
     storeList,
     loading,
     error,
-    hasNavigatedThisSession,
     fetchStores,
     createStore,
     deleteStore,
