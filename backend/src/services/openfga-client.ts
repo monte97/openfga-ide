@@ -20,10 +20,6 @@ class OpenFgaClient {
     this.baseUrl = url
   }
 
-  updateApiKey(apiKey: string): void {
-    this.apiKey = apiKey
-  }
-
   private headers(): Record<string, string> {
     const h: Record<string, string> = {
       'Content-Type': 'application/json',

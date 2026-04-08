@@ -11,7 +11,6 @@ vi.mock('../services/openfga-client.js', () => ({
     delete: vi.fn(),
     testConnection: vi.fn(),
     updateUrl: vi.fn(),
-    updateApiKey: vi.fn(),
   },
 }))
 
