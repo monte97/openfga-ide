@@ -41,11 +41,13 @@ const mockGetRun = vi.mocked(runSvc.getRun)
 import app from '../../app.js'
 
 let server: Server
-const PORT = 3098
-const base = `http://localhost:${PORT}`
+let base: string
 
-beforeAll(() => {
-  server = app.listen(PORT)
+beforeAll(async () => {
+  await new Promise<void>((resolve, reject) => {
+    server = app.listen(0, resolve).on('error', reject)
+  })
+  base = `http://localhost:${(server.address() as { port: number }).port}`
 })
 
 afterAll(() => {

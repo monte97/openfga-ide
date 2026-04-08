@@ -3,17 +3,19 @@ import app from '../app.js'
 import type { Server } from 'node:http'
 
 let server: Server
-const PORT = 3099
 
 beforeAll(async () => {
-  server = app.listen(PORT)
+  await new Promise<void>((resolve, reject) => {
+    server = app.listen(0, resolve).on('error', reject)
+  })
+  base = `http://localhost:${(server.address() as { port: number }).port}`
 })
 
 afterAll(() => {
   server.close()
 })
 
-const base = `http://localhost:${PORT}`
+let base: string
 
 describe('GET /api/connection', () => {
   it('returns connection status without API key', async () => {

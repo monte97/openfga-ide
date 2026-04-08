@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { openfgaClient } from '../services/openfga-client.js'
 import { validate } from '../middleware/validate.js'
-import { testConnectionSchema, updateConnectionSchema } from '../schemas/connection.js'
+import { testConnectionSchema, updateConnectionSchema, type TestConnectionBody, type UpdateConnectionBody } from '../schemas/connection.js'
 
 const router = Router()
 
@@ -14,7 +14,7 @@ router.get('/api/connection', (_req, res) => {
 })
 
 router.post('/api/connection/test', validate(testConnectionSchema), async (req, res) => {
-  const { url } = req.body as { url: string }
+  const { url } = req.body as TestConnectionBody
   try {
     await openfgaClient.testConnection(url)
     res.json({ status: 'connected' })
@@ -27,7 +27,7 @@ router.post('/api/connection/test', validate(testConnectionSchema), async (req, 
 })
 
 router.put('/api/connection', validate(updateConnectionSchema), async (req, res) => {
-  const { url } = req.body as { url: string }
+  const { url } = req.body as UpdateConnectionBody
   try {
     await openfgaClient.testConnection(url)
     openfgaClient.updateUrl(url)

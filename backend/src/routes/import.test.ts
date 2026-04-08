@@ -14,17 +14,19 @@ const { importToNewStore: mockImportNew, importToExistingStore: mockImportExisti
   }
 
 let server: Server
-const PORT = 3093
 
 beforeAll(async () => {
-  server = app.listen(PORT)
+  await new Promise<void>((resolve, reject) => {
+    server = app.listen(0, resolve).on('error', reject)
+  })
+  base = `http://localhost:${(server.address() as { port: number }).port}`
 })
 
 afterAll(() => {
   server.close()
 })
 
-const base = `http://localhost:${PORT}`
+let base: string
 
 beforeEach(() => {
   mockImportNew.mockReset()

@@ -19,17 +19,19 @@ const { getModel: mockGetModel } = await import('../services/model-service.js') 
 }
 
 let server: Server
-const PORT = 3097
 
 beforeAll(async () => {
-  server = app.listen(PORT)
+  await new Promise<void>((resolve, reject) => {
+    server = app.listen(0, resolve).on('error', reject)
+  })
+  base = `http://localhost:${(server.address() as { port: number }).port}`
 })
 
 afterAll(() => {
   server.close()
 })
 
-const base = `http://localhost:${PORT}`
+let base: string
 
 const sampleModelResponse = {
   json: {

@@ -7,3 +7,6 @@ export const testConnectionSchema = z.object({
 export const updateConnectionSchema = z.object({
   url: z.string().url(),
 })
+
+export type TestConnectionBody = z.infer<typeof testConnectionSchema>
+export type UpdateConnectionBody = z.infer<typeof updateConnectionSchema>

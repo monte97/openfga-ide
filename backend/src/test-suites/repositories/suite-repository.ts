@@ -2,14 +2,20 @@ import { getPool } from '../db/pool.js'
 import type { Suite, SuiteListItem, CreateSuiteInput, UpdateSuiteInput } from '../types/suite.js'
 import type { RunStatus, RunSummary } from '../types/run.js'
 
+/** Safely convert a pg date column to ISO string — pg returns Date objects but string fallback handles edge cases */
+function pgDate(val: unknown): string {
+  if (val instanceof Date) return val.toISOString()
+  return String(val)
+}
+
 function mapRowToSuiteListItem(row: Record<string, unknown>): SuiteListItem {
   return {
     id: row.id as string,
     name: row.name as string,
     description: (row.description as string | null) ?? null,
     tags: (row.tags as string[]) ?? [],
-    createdAt: (row.created_at as Date).toISOString(),
-    updatedAt: (row.updated_at as Date).toISOString(),
+    createdAt: pgDate(row.created_at),
+    updatedAt: pgDate(row.updated_at),
     lastRun: row.last_run_status
       ? { status: row.last_run_status as RunStatus, summary: (row.last_run_summary as RunSummary | null) ?? null }
       : null,
