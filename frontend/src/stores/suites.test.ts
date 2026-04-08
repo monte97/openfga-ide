@@ -163,6 +163,35 @@ describe('useSuiteStore', () => {
       await store.fetchSuite('suite-1')
       expect(store.loadingSuite).toBe(false)
     })
+
+    it('aborts prior in-flight fetch when called again', async () => {
+      const { useSuiteStore } = await import('./suites')
+      const store = useSuiteStore()
+      const abortSpy = vi.spyOn(AbortController.prototype, 'abort')
+      // First call never resolves (simulates slow network)
+      let resolveFirst!: (v: unknown) => void
+      fetchMock
+        .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve }))
+        .mockResolvedValue(makeOkResponse(fullSuite))
+      const first = store.fetchSuite('suite-1')
+      const second = store.fetchSuite('suite-2')
+      await second
+      // The first call should have been aborted
+      expect(abortSpy).toHaveBeenCalledTimes(1)
+      // Resolve first to avoid dangling promises
+      resolveFirst({ ok: true, json: async () => fullSuite })
+      await first
+    })
+
+    it('does not set activeSuite or errorSuite on AbortError', async () => {
+      const { useSuiteStore } = await import('./suites')
+      const store = useSuiteStore()
+      const abortError = new DOMException('Aborted', 'AbortError')
+      fetchMock.mockRejectedValue(abortError)
+      await store.fetchSuite('suite-1')
+      expect(store.activeSuite).toBeNull()
+      expect(store.errorSuite).toBeNull()
+    })
   })
 
   describe('saveDefinition()', () => {
@@ -174,6 +203,33 @@ describe('useSuiteStore', () => {
       fetchMock.mockResolvedValue(makeOkResponse({ ...fullSuite, definition: newDef }))
       await store.saveDefinition('suite-1', newDef)
       expect(store.activeSuite!.definition.groups).toHaveLength(0)
+    })
+
+    it('aborts prior in-flight save when called again', async () => {
+      const { useSuiteStore } = await import('./suites')
+      const store = useSuiteStore()
+      store.activeSuite = fullSuite
+      const abortSpy = vi.spyOn(AbortController.prototype, 'abort')
+      let resolveFirst!: (v: unknown) => void
+      fetchMock
+        .mockImplementationOnce(() => new Promise((resolve) => { resolveFirst = resolve }))
+        .mockResolvedValue(makeOkResponse(fullSuite))
+      const first = store.saveDefinition('suite-1', { groups: [] })
+      const second = store.saveDefinition('suite-1', { groups: [] })
+      await second
+      // At least one abort must have been issued for the previous in-flight save
+      expect(abortSpy).toHaveBeenCalled()
+      resolveFirst({ ok: true, json: async () => fullSuite })
+      await first
+    })
+
+    it('does not throw on AbortError', async () => {
+      const { useSuiteStore } = await import('./suites')
+      const store = useSuiteStore()
+      store.activeSuite = fullSuite
+      const abortError = new DOMException('Aborted', 'AbortError')
+      fetchMock.mockRejectedValue(abortError)
+      await expect(store.saveDefinition('suite-1', { groups: [] })).resolves.toBeUndefined()
     })
   })
 

@@ -619,3 +619,84 @@ So that I can confidently reuse suites across environments without importing bro
 **Given** the import reuses the same Zod schemas as the API
 **When** validation runs on the frontend
 **Then** it produces the same errors as server-side validation — zero divergence (FR30, FR33)
+
+## Epic 11: Async Safety & State Cleanup
+
+Consolidates deferred work items from code reviews across Epics 7-10. Addresses race conditions in async operations, missing state cleanup on suite switch, and polling resilience. These are cross-cutting concerns that affect the suite editor, fixture editor, and run polling subsystems.
+
+### Story 11.1: Suite Switch Async Safety and State Reset
+
+As a developer using the suite editor,
+I want suite switching to cancel in-flight operations and reset transient UI state,
+So that I never see stale data from a previous suite or trigger saves against the wrong suite.
+
+**Acceptance Criteria:**
+
+**AC1: fetchSuite cancellation on suite switch**
+**Given** the user is viewing suite A and `fetchSuite(A)` is in flight
+**When** the user navigates to suite B (triggering `fetchSuite(B)`)
+**Then** the in-flight request for suite A is aborted via AbortController
+**And** `activeSuite` is set only from suite B's response
+
+**AC2: saveDefinition cancellation on suite switch**
+**Given** a debounced `saveDefinition` call for suite A is pending or in-flight
+**When** the user navigates to suite B
+**Then** the pending timer is cleared and any in-flight save for suite A is aborted
+**And** no save request completes for suite A after the switch
+
+**AC3: saveDefinition cancellation on rapid edits**
+**Given** the user is rapidly editing JSON in SuiteJsonEditor or FixtureEditor
+**When** a new debounced save fires while a previous save is still in-flight
+**Then** the previous in-flight save is aborted via AbortController
+**And** only the most recent save completes
+
+**AC4: UI state reset on suite switch**
+**Given** the user has expanded groups and is on the Fixture tab viewing suite A
+**When** the user switches to suite B
+**Then** `editorMode` resets to `'form'`
+**And** `expandedGroupIds` is cleared
+**And** `fixtureValidationError` is cleared
+**And** pending `jsonSaveTimer` and `fixtureSaveTimer` are cleared
+
+**AC5: Polling circuit breaker**
+**Given** run polling is active and the network becomes permanently unavailable
+**When** consecutive fetch errors exceed a threshold (e.g., 5)
+**Then** polling stops automatically
+**And** a user-visible error indicates polling was stopped
+**And** a "Retry" action is available to resume polling
+
+### Story 11.2: Connection Store Robustness and UX Polish
+
+As a user managing store connections,
+I want concurrent store fetches to be safe, loading states to be accurate, and search to give feedback,
+So that I always see correct, up-to-date store data with clear status indicators.
+
+**Acceptance Criteria:**
+
+**AC1: fetchStores deduplication**
+**Given** `fetchStores()` is already in-flight
+**When** a second `fetchStores()` is triggered (e.g., from mount + updateConnection)
+**Then** the second call is deduplicated (either awaits the first or is skipped)
+**And** `stores.value` is set exactly once from the response
+
+**AC2: Separate loading flags**
+**Given** `fetchConnection` and `updateConnection` are independent operations
+**When** both are in progress simultaneously
+**Then** each has its own loading state
+**And** the UI shows the correct spinner for each operation independently
+
+**AC3: storeList reset on fetch error**
+**Given** `storeList` contains cached data from a previous successful fetch
+**When** `fetchStores()` fails
+**Then** `storeList.value` is set to `[]` to prevent stale data display
+
+**AC4: "No stores found" feedback in StoreSelector**
+**Given** the user types in the StoreSelector search field
+**When** the search filter matches zero stores
+**Then** the dropdown shows "No stores found" instead of disappearing silently
+
+**AC5: Error toast cap**
+**Given** multiple API errors occur in rapid succession
+**When** error toasts are shown
+**Then** a maximum of 3 error toasts are visible simultaneously
+**And** newer toasts replace the oldest when the cap is exceeded

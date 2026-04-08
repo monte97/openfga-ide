@@ -20,7 +20,8 @@ describe('useConnectionStore', () => {
     expect(store.url).toBe('')
     expect(store.storeId).toBe('')
     expect(store.stores).toEqual([])
-    expect(store.loading).toBe(false)
+    expect(store.loadingFetch).toBe(false)
+    expect(store.loadingUpdate).toBe(false)
     expect(store.error).toBeNull()
   })
 
@@ -34,7 +35,7 @@ describe('useConnectionStore', () => {
     expect(store.url).toBe('http://openfga:8080')
     expect(store.storeId).toBe('store-1')
     expect(store.status).toBe('connected')
-    expect(store.loading).toBe(false)
+    expect(store.loadingFetch).toBe(false)
   })
 
   it('fetchConnection() sets status to error on failure', async () => {
@@ -43,6 +44,37 @@ describe('useConnectionStore', () => {
     await store.fetchConnection()
     expect(store.status).toBe('error')
     expect(store.error).toBe('Network error')
+  })
+
+  it('loadingFetch and loadingUpdate are independent flags', async () => {
+    let resolveUpdate!: () => void
+    const updatePending = new Promise<void>((r) => { resolveUpdate = r })
+
+    // fetchConnection resolves immediately; updateConnection stalls
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({ url: 'http://h:8080', storeId: '', status: 'connected' }),
+      })
+      .mockReturnValue(updatePending.then(() => ({
+        ok: true,
+        json: async () => ({ url: 'http://h:8080', storeId: '', status: 'connected' }),
+      })))
+
+    const { useConnectionStore } = await import('../connection')
+    const store = useConnectionStore()
+
+    await store.fetchConnection()
+    expect(store.loadingFetch).toBe(false)
+
+    // start update but don't await — check flag while in-flight
+    const updatePromise = store.updateConnection('http://h:8080')
+    expect(store.loadingUpdate).toBe(true)
+    expect(store.loadingFetch).toBe(false) // unaffected
+
+    resolveUpdate()
+    await updatePromise
+    expect(store.loadingUpdate).toBe(false)
   })
 
   it('testConnection() returns true on success', async () => {
@@ -97,6 +129,44 @@ describe('useConnectionStore', () => {
     const store = useConnectionStore()
     await store.fetchStores()
     expect(store.stores).toHaveLength(2)
+  })
+
+  describe('fetchStores() deduplication', () => {
+    it('concurrent calls share one in-flight fetch', async () => {
+      let resolve!: (v: unknown) => void
+      const pending = new Promise((r) => { resolve = r })
+      fetchMock.mockReturnValue(
+        pending.then(() => ({ ok: true, json: async () => ({ stores: [{ id: 'a', name: 'Alpha', created_at: '', updated_at: '' }] }) }))
+      )
+
+      const { useConnectionStore } = await import('../connection')
+      const store = useConnectionStore()
+
+      const p1 = store.fetchStores()
+      const p2 = store.fetchStores()
+
+      resolve(undefined)
+      await Promise.all([p1, p2])
+
+      // fetch was called only once despite two concurrent invocations
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+      expect(store.stores).toHaveLength(1)
+    })
+
+    it('second fetchStores after first resolves fires a new fetch', async () => {
+      fetchMock.mockResolvedValue({
+        ok: true,
+        json: async () => ({ stores: [] }),
+      })
+      const { useConnectionStore } = await import('../connection')
+      const store = useConnectionStore()
+
+      await store.fetchStores()
+      fetchMock.mockClear()
+      await store.fetchStores()
+
+      expect(fetchMock).toHaveBeenCalledTimes(1)
+    })
   })
 
   it('selectStore() updates storeId', () => {

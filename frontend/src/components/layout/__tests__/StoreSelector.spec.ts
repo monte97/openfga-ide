@@ -74,4 +74,27 @@ describe('StoreSelector', () => {
     // Component renders without error
     expect(wrapper.find('input').exists()).toBe(true)
   })
+
+  it('shows "No stores found" when query matches nothing', async () => {
+    const pinia = createPinia()
+    setActivePinia(pinia)
+    const store = useConnectionStore()
+    store.stores = [
+      { id: 'a', name: 'Alpha', created_at: '', updated_at: '' },
+    ]
+
+    const wrapper = mount(StoreSelector, {
+      global: { plugins: [pinia] },
+      attachTo: document.body,
+    })
+
+    // Focus input and type a non-matching query
+    const input = wrapper.find('input')
+    await input.trigger('focus')
+    await input.setValue('xyz-no-match')
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.text()).toContain('No stores found')
+    wrapper.unmount()
+  })
 })

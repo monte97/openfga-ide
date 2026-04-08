@@ -128,11 +128,14 @@ function makeRunStoreMock(overrides: Record<string, unknown> = {}) {
     loading: false,
     error: null,
     pollInterval: null,
+    consecutiveErrors: 0,
+    pollingError: null as string | null,
     triggerRun: vi.fn().mockResolvedValue('run-1'),
     fetchRun: vi.fn(),
     startPolling: vi.fn(),
     stopPolling: vi.fn(),
     clearRun: vi.fn(),
+    retryPolling: vi.fn(),
     ...overrides,
   }
 }
@@ -622,6 +625,65 @@ describe('SuiteEditor', () => {
     const wrapper = mountEditor()
     const treePanel = wrapper.findComponent({ name: 'SuiteTreePanel' })
     expect(treePanel.props('results')).toEqual(results)
+  })
+
+  it('clears jsonSaveTimer when suite.id changes', async () => {
+    vi.useFakeTimers()
+    const mockSuiteStore = makeSuiteStoreMock({
+      activeSuite: { ...sampleSuite, definition: sampleDefinition },
+      fetchSuite: vi.fn().mockResolvedValue(undefined),
+      saveDefinition: vi.fn().mockResolvedValue(undefined),
+    })
+    vi.mocked(useSuiteStore).mockReturnValue(mockSuiteStore as unknown as ReturnType<typeof useSuiteStore>)
+    const wrapper = mountEditor()
+
+    // Trigger a debounced save by emitting JSON change
+    const jsonEditor = wrapper.findComponent({ name: 'SuiteJsonEditor' })
+    await jsonEditor.vm.$emit('update:modelValue', JSON.stringify(sampleDefinition))
+    // Timer is pending but not fired yet
+    expect(mockSuiteStore.saveDefinition).not.toHaveBeenCalled()
+
+    // Change the suite — watcher should clear the timer
+    await wrapper.setProps({ suite: { ...sampleSuite, id: 'suite-2' } })
+    await nextTick()
+
+    // Advance timers — save should NOT fire (timer was cleared)
+    vi.runAllTimers()
+    await nextTick()
+    expect(mockSuiteStore.saveDefinition).not.toHaveBeenCalled()
+
+    vi.useRealTimers()
+  })
+
+  it('shows polling error banner and Retry button when pollingError is set', async () => {
+    vi.mocked(useRunStore).mockReturnValue(
+      reactive(makeRunStoreMock({
+        pollingError: 'Polling stopped after repeated failures. Check network and retry.',
+        retryPolling: vi.fn(),
+      })) as unknown as ReturnType<typeof useRunStore>
+    )
+    const wrapper = mountEditor()
+    await nextTick()
+
+    const banner = wrapper.find('[data-testid="polling-error-banner"]')
+    expect(banner.exists()).toBe(true)
+    expect(banner.text()).toContain('Polling stopped')
+    expect(wrapper.find('[data-testid="polling-retry-button"]').exists()).toBe(true)
+  })
+
+  it('calls retryPolling when Retry button is clicked', async () => {
+    const mockRetry = vi.fn()
+    vi.mocked(useRunStore).mockReturnValue(
+      reactive(makeRunStoreMock({
+        pollingError: 'Polling stopped after repeated failures. Check network and retry.',
+        retryPolling: mockRetry,
+      })) as unknown as ReturnType<typeof useRunStore>
+    )
+    const wrapper = mountEditor()
+    await nextTick()
+
+    await wrapper.find('[data-testid="polling-retry-button"]').trigger('click')
+    expect(mockRetry).toHaveBeenCalledTimes(1)
   })
 
   it('run-test-case event from SuiteTreePanel calls triggerRun with testCaseId', async () => {

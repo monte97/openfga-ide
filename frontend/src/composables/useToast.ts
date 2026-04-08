@@ -9,8 +9,17 @@ export interface Toast {
 
 const toasts = reactive<Toast[]>([])
 
+const MAX_ERROR_TOASTS = 3
+
 export function useToast() {
   function show({ type, message }: { type: Toast['type']; message: string }): string {
+    if (type === 'error') {
+      const errorToasts = toasts.filter((t) => t.type === 'error')
+      if (errorToasts.length >= MAX_ERROR_TOASTS) {
+        dismiss(errorToasts[0].id)
+      }
+    }
+
     const id = `toast-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`
     const toast: Toast = { id, type, message }
 

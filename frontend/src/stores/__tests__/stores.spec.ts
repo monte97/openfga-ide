@@ -68,6 +68,23 @@ describe('useStoresStore', () => {
       await store.fetchStores()
       expect(store.error).toBe('Network error')
     })
+
+    it('clears stale storeList when fetch fails after prior success', async () => {
+      const { useStoresStore } = await import('../stores')
+      const store = useStoresStore()
+
+      // First fetch succeeds — storeList has data
+      fetchMock.mockResolvedValueOnce(makeOkResponse({
+        stores: [{ id: 'a', name: 'Alpha', created_at: '', updated_at: '' }],
+      }))
+      await store.fetchStores()
+      expect(store.storeList).toHaveLength(1)
+
+      // Second fetch fails — storeList must be cleared
+      fetchMock.mockResolvedValue(makeErrorResponse('Service unavailable', 503))
+      await store.fetchStores()
+      expect(store.storeList).toEqual([])
+    })
   })
 
   describe('createStore()', () => {

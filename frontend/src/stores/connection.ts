@@ -33,7 +33,8 @@ export const useConnectionStore = defineStore('connection', () => {
   const storeId = ref<string>(localStorage.getItem(STORE_ID_KEY) ?? '')
   const status = ref<'connected' | 'error' | 'loading'>('loading')
   const stores = ref<StoreInfo[]>([])
-  const loading = ref<boolean>(false)
+  const loadingFetch = ref<boolean>(false)
+  const loadingUpdate = ref<boolean>(false)
   const error = ref<string | null>(null)
 
   const activeStoreName = computed(
@@ -43,7 +44,7 @@ export const useConnectionStore = defineStore('connection', () => {
   const isConnected = computed(() => status.value === 'connected')
 
   async function fetchConnection() {
-    loading.value = true
+    loadingFetch.value = true
     error.value = null
     try {
       const data = await api.get<ConnectionStatus>('connection')
@@ -57,7 +58,7 @@ export const useConnectionStore = defineStore('connection', () => {
       status.value = 'error'
       error.value = (err as Error).message
     } finally {
-      loading.value = false
+      loadingFetch.value = false
     }
   }
 
@@ -71,7 +72,7 @@ export const useConnectionStore = defineStore('connection', () => {
   }
 
   async function updateConnection(newUrl: string) {
-    loading.value = true
+    loadingUpdate.value = true
     error.value = null
     try {
       const data = await api.put<ConnectionStatus>('connection', { url: newUrl })
@@ -83,17 +84,26 @@ export const useConnectionStore = defineStore('connection', () => {
       status.value = 'error'
       error.value = (err as Error).message
     } finally {
-      loading.value = false
+      loadingUpdate.value = false
     }
   }
 
-  async function fetchStores() {
-    try {
-      const data = await api.get<ListStoresResponse>('stores')
-      stores.value = data.stores
-    } catch {
-      // non-fatal: keep existing stores
-    }
+  // In-flight promise guard — prevents duplicate concurrent fetches
+  let fetchStoresPromise: Promise<void> | null = null
+
+  async function fetchStores(): Promise<void> {
+    if (fetchStoresPromise) return fetchStoresPromise
+    fetchStoresPromise = (async () => {
+      try {
+        const data = await api.get<ListStoresResponse>('stores')
+        stores.value = data.stores
+      } catch {
+        // non-fatal: keep existing stores
+      } finally {
+        fetchStoresPromise = null
+      }
+    })()
+    return fetchStoresPromise
   }
 
   function selectStore(id: string) {
@@ -110,7 +120,8 @@ export const useConnectionStore = defineStore('connection', () => {
     storeId,
     status,
     stores,
-    loading,
+    loadingFetch,
+    loadingUpdate,
     error,
     activeStoreName,
     isConnected,

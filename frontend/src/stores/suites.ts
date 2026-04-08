@@ -66,6 +66,10 @@ export const useSuiteStore = defineStore('suites', () => {
   const loadingSuite = ref(false)
   const errorSuite = ref<string | null>(null)
 
+  // AbortControllers for in-flight requests — cancelled on rapid suite switches / rapid edits
+  let fetchAbort: AbortController | null = null
+  let saveAbort: AbortController | null = null
+
   async function fetchSuites(): Promise<void> {
     loading.value = true
     error.value = null
@@ -96,10 +100,12 @@ export const useSuiteStore = defineStore('suites', () => {
   }
 
   async function fetchSuite(id: string): Promise<void> {
+    fetchAbort?.abort()
+    fetchAbort = new AbortController()
     loadingSuite.value = true
     errorSuite.value = null
     try {
-      const data = await api.get<Suite>(`suites/${id}`)
+      const data = await api.get<Suite>(`suites/${id}`, fetchAbort.signal)
       // Backend does not persist group/testCase IDs — assign locally on load
       activeSuite.value = {
         ...data,
@@ -118,16 +124,29 @@ export const useSuiteStore = defineStore('suites', () => {
           : { groups: [] },
       }
     } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
       errorSuite.value = (err as Error).message
     } finally {
       loadingSuite.value = false
     }
   }
 
+  function cancelSave(): void {
+    saveAbort?.abort()
+    saveAbort = null
+  }
+
   async function saveDefinition(id: string, definition: SuiteDefinition): Promise<void> {
-    await api.put<Suite>(`suites/${id}`, { definition })
-    if (activeSuite.value?.id === id) {
-      activeSuite.value = { ...activeSuite.value, definition }
+    saveAbort?.abort()
+    saveAbort = new AbortController()
+    try {
+      await api.put<Suite>(`suites/${id}`, { definition }, saveAbort.signal)
+      if (activeSuite.value?.id === id) {
+        activeSuite.value = { ...activeSuite.value, definition }
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
+      throw err
     }
   }
 
@@ -278,6 +297,7 @@ export const useSuiteStore = defineStore('suites', () => {
     createSuite,
     deleteSuite,
     fetchSuite,
+    cancelSave,
     saveDefinition,
     addGroup,
     removeGroup,

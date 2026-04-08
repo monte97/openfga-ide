@@ -80,6 +80,8 @@ onUnmounted(() => {
 
 // Re-fetch when suite changes and reset editor state
 watch(() => props.suite.id, async (id) => {
+  if (jsonSaveTimer !== null) { clearTimeout(jsonSaveTimer); jsonSaveTimer = null }
+  suiteStore.cancelSave()
   editorStore.selectTestCase(null)
   editorStore.setEditorMode('form')
   editorStore.clearExpandedGroups()
@@ -314,6 +316,23 @@ async function onRemoveTestCase(groupId: string, testCaseId: string) {
           data-testid="phase-timeline-container"
         >
           <RunPhaseTimeline :run="runsStore.currentRun" :total-test-cases="totalTestCases" />
+        </div>
+
+        <!-- Polling error banner -->
+        <div
+          v-if="runsStore.pollingError"
+          role="alert"
+          class="mx-3 mt-2 px-3 py-2 rounded-md bg-warning/10 border border-warning/30 text-sm text-warning flex items-center gap-2 shrink-0"
+          data-testid="polling-error-banner"
+        >
+          <span class="flex-1">{{ runsStore.pollingError }}</span>
+          <button
+            class="text-xs font-medium underline hover:no-underline"
+            data-testid="polling-retry-button"
+            @click="runsStore.retryPolling()"
+          >
+            Retry
+          </button>
         </div>
 
         <!-- Tab header (manual, to keep both panels mounted via v-show) -->

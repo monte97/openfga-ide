@@ -249,5 +249,103 @@ describe('useRunStore', () => {
       expect(store.error).toBeNull()
       expect(store.pollInterval).toBeNull()
     })
+
+    it('resets consecutiveErrors and pollingError', async () => {
+      const { useRunStore } = await import('./runs')
+      const store = useRunStore()
+      store.consecutiveErrors = 3
+      store.pollingError = 'some error'
+
+      store.clearRun()
+
+      expect(store.consecutiveErrors).toBe(0)
+      expect(store.pollingError).toBeNull()
+    })
+  })
+
+  describe('polling circuit breaker', () => {
+    it('stops polling and sets pollingError after 5 consecutive errors', async () => {
+      const { useRunStore } = await import('./runs')
+      const store = useRunStore()
+      fetchMock.mockRejectedValue(new Error('network'))
+
+      store.startPolling('run-1')
+      // Immediate fetch + 4 more via interval = 5 total
+      await vi.runAllTicks()
+      for (let i = 0; i < 4; i++) {
+        await vi.advanceTimersByTimeAsync(2000)
+        await vi.runAllTicks()
+      }
+
+      expect(store.pollingError).not.toBeNull()
+      expect(store.pollInterval).toBeNull()
+    })
+
+    it('stops polling on 5 consecutive non-ok responses', async () => {
+      const { useRunStore } = await import('./runs')
+      const store = useRunStore()
+      fetchMock.mockResolvedValue(makeErrorResponse('Server error', 500))
+
+      store.startPolling('run-1')
+      await vi.runAllTicks()
+      for (let i = 0; i < 4; i++) {
+        await vi.advanceTimersByTimeAsync(2000)
+        await vi.runAllTicks()
+      }
+
+      expect(store.pollingError).not.toBeNull()
+      expect(store.pollInterval).toBeNull()
+    })
+
+    it('resets consecutiveErrors on successful fetch', async () => {
+      const { useRunStore } = await import('./runs')
+      const store = useRunStore()
+      // 3 errors then 1 success
+      fetchMock
+        .mockRejectedValueOnce(new Error('network'))
+        .mockRejectedValueOnce(new Error('network'))
+        .mockRejectedValueOnce(new Error('network'))
+        .mockResolvedValue(makeOkResponse(makeRun({ status: 'running' })))
+
+      store.startPolling('run-1')
+      await vi.runAllTicks()
+      for (let i = 0; i < 3; i++) {
+        await vi.advanceTimersByTimeAsync(2000)
+        await vi.runAllTicks()
+      }
+
+      expect(store.consecutiveErrors).toBe(0)
+      expect(store.pollingError).toBeNull()
+    })
+
+    it('retryPolling resets state and resumes polling', async () => {
+      const { useRunStore } = await import('./runs')
+      const store = useRunStore()
+      // Set up a completed state after error
+      store.consecutiveErrors = 5
+      store.pollingError = 'Polling stopped after repeated failures. Check network and retry.'
+      store.currentRun = makeRun({ id: 'run-1', status: 'running' }) as never
+      fetchMock.mockResolvedValue(makeOkResponse(makeRun({ status: 'running' })))
+
+      store.retryPolling()
+      await vi.runAllTicks()
+
+      expect(store.consecutiveErrors).toBe(0)
+      expect(store.pollingError).toBeNull()
+      expect(store.pollInterval).not.toBeNull()
+    })
+
+    it('retryPolling does nothing when no currentRun', async () => {
+      const { useRunStore } = await import('./runs')
+      const store = useRunStore()
+      store.consecutiveErrors = 5
+      store.pollingError = 'error'
+
+      store.retryPolling()
+
+      expect(store.consecutiveErrors).toBe(0)
+      expect(store.pollingError).toBeNull()
+      expect(store.pollInterval).toBeNull()
+    })
   })
 })

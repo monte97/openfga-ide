@@ -34,6 +34,7 @@ export const useStoresStore = defineStore('stores', () => {
       const data = await api.get<ListStoresResponse>('stores')
       storeList.value = data.stores ?? []
     } catch (err) {
+      storeList.value = []
       error.value = (err as Error).message
     } finally {
       loading.value = false

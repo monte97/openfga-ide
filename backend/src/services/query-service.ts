@@ -17,7 +17,7 @@ export async function check(
   const data = await openfgaClient.post(`/stores/${storeId}/check`, {
     tuple_key: { user: params.user, relation: params.relation, object: params.object },
   }) as OpenFgaCheckResponse
-  return { allowed: data.allowed }
+  return { allowed: data.allowed ?? false }
 }
 
 export async function listObjects(
@@ -52,5 +52,5 @@ export async function expand(
   const data = await openfgaClient.post(`/stores/${storeId}/expand`, {
     tuple_key: { relation: params.relation, object: params.object },
   }) as OpenFgaExpandResponse
-  return { tree: data.tree }
+  return { tree: data.tree ?? null }
 }

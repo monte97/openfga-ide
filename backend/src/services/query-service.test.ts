@@ -34,6 +34,13 @@ describe('query-service', () => {
       const result = await check('store-01', { user: 'user:bob', relation: 'owner', object: 'document:secret' })
       expect(result).toEqual({ allowed: false })
     })
+
+    it('returns allowed:false when OpenFGA omits the allowed field', async () => {
+      mockClient.post.mockResolvedValue({})
+
+      const result = await check('store-01', { user: 'user:alice', relation: 'viewer', object: 'document:roadmap' })
+      expect(result).toEqual({ allowed: false })
+    })
   })
 
   describe('listObjects', () => {
@@ -98,6 +105,13 @@ describe('query-service', () => {
         tuple_key: { relation: 'viewer', object: 'document:roadmap' },
       })
       expect(result).toEqual({ tree })
+    })
+
+    it('returns tree:null when OpenFGA omits the tree field', async () => {
+      mockClient.post.mockResolvedValue({})
+
+      const result = await expand('store-01', { relation: 'viewer', object: 'document:roadmap' })
+      expect(result).toEqual({ tree: null })
     })
   })
 

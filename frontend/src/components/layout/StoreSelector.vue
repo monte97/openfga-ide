@@ -39,7 +39,7 @@ function onSelect(id: string | null) {
         @change="query = $event.target.value"
       />
       <ComboboxOptions
-        v-if="filteredStores.length > 0"
+        v-if="query || filteredStores.length > 0"
         class="absolute right-0 top-full mt-1 w-64 bg-surface-elevated border border-surface-border rounded-md shadow-lg overflow-auto max-h-48 z-50 focus:outline-none"
       >
         <ComboboxOption
@@ -60,6 +60,12 @@ function onSelect(id: string | null) {
             <span class="block text-xs text-text-secondary font-mono">{{ store.id }}</span>
           </li>
         </ComboboxOption>
+        <li
+          v-if="filteredStores.length === 0 && query"
+          class="px-3 py-2 text-sm text-text-secondary"
+        >
+          No stores found
+        </li>
       </ComboboxOptions>
     </div>
   </Combobox>

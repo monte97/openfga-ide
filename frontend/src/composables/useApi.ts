@@ -1,13 +1,18 @@
 import { useToast } from './useToast'
 
+function isAbortError(err: unknown): boolean {
+  return err instanceof DOMException && err.name === 'AbortError'
+}
+
 export function useApi() {
   const toast = useToast()
 
-  async function get<T>(path: string): Promise<T> {
+  async function get<T>(path: string, signal?: AbortSignal): Promise<T> {
     let res: Response
     try {
-      res = await fetch(`/api/${path}`)
-    } catch {
+      res = signal ? await fetch(`/api/${path}`, { signal }) : await fetch(`/api/${path}`)
+    } catch (err) {
+      if (isAbortError(err)) throw err
       toast.show({ type: 'error', message: 'Network error' })
       throw new Error('Network error')
     }
@@ -20,15 +25,17 @@ export function useApi() {
     return res.json() as Promise<T>
   }
 
-  async function post<T>(path: string, body: unknown): Promise<T> {
+  async function post<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
     let res: Response
     try {
       res = await fetch(`/api/${path}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal,
       })
-    } catch {
+    } catch (err) {
+      if (isAbortError(err)) throw err
       toast.show({ type: 'error', message: 'Network error' })
       throw new Error('Network error')
     }
@@ -41,15 +48,17 @@ export function useApi() {
     return res.json() as Promise<T>
   }
 
-  async function put<T>(path: string, body: unknown): Promise<T> {
+  async function put<T>(path: string, body: unknown, signal?: AbortSignal): Promise<T> {
     let res: Response
     try {
       res = await fetch(`/api/${path}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
+        signal,
       })
-    } catch {
+    } catch (err) {
+      if (isAbortError(err)) throw err
       toast.show({ type: 'error', message: 'Network error' })
       throw new Error('Network error')
     }
@@ -62,16 +71,17 @@ export function useApi() {
     return res.json() as Promise<T>
   }
 
-  async function del<T>(path: string, body?: unknown): Promise<T> {
+  async function del<T>(path: string, body?: unknown, signal?: AbortSignal): Promise<T> {
     let res: Response
     try {
-      const options: RequestInit = { method: 'DELETE' }
+      const options: RequestInit = { method: 'DELETE', signal }
       if (body !== undefined) {
         options.headers = { 'Content-Type': 'application/json' }
         options.body = JSON.stringify(body)
       }
       res = await fetch(`/api/${path}`, options)
-    } catch {
+    } catch (err) {
+      if (isAbortError(err)) throw err
       toast.show({ type: 'error', message: 'Network error' })
       throw new Error('Network error')
     }

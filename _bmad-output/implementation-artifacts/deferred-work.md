@@ -1,5 +1,9 @@
 # Deferred Work
 
+## Deferred from: code review of 11-1-suite-switch-async-safety-and-state-reset (2026-04-03)
+
+- **`isAbortError` helper not exported from `useApi.ts`** — `suites.ts` uses inline `err instanceof DOMException && err.name === 'AbortError'` checks instead of the shared helper. Low-impact cosmetic duplication; inline checks are correct and readable.
+
 ## Deferred from: code review of 10-2-import-suite-with-validation-preview (2026-04-01)
 
 - **`ZodIssue` type alias duplicated** — `ImportJsonEditor.vue` and `ImportPreview.vue` both define the same local type; extract to shared `schemas/` in a future refactor.
@@ -30,7 +34,7 @@
 - **AC4: tags field is plain text input, not multi-select** — comma-separated text per dev notes; AC4 says "multi-select input"; accepted deviation.
 - **`SuiteTreePanel` `focusedNodeId` stale after collapse** — ArrowLeft silently no-ops when focused node's group is externally collapsed; low UX impact.
 - **`document.querySelector` in `focusNode` unscoped** — would find the first matching `[data-node-id]` in the document; breaks if two tree instances exist simultaneously.
-- **`onTagsBlur`/`onDescriptionBlur` fire on every blur, even without changes** — causes unnecessary PUT requests; optimise with dirty-check before saving.
+- ~~**`onTagsBlur`/`onDescriptionBlur` fire on every blur without dirty-check**~~ — already fixed; both functions guard with equality check before emitting.
 - **`useAutocompleteOptions` no null guard on `tuple.key.user/relation/object`** — malformed backend response could push `{ value: undefined, label: undefined }` options into SearchableSelect.
 
 ## Deferred from: code review of 8-3-fixture-editor (2026-03-31)
@@ -90,9 +94,9 @@
 - **`useModelOptions` uses inline `as` casts** [composables/useModelOptions.ts:8,18] — bypasses model store's declared type; risk of silent divergence if model store type is updated.
 - **`CheckQuery.vue` `@keydown.enter` on outer div** [components/query/CheckQuery.vue:21] — double-submit risk if a focused button inside the form receives Enter; pre-existing from story 4.2.
 - **No `userFilters` in `listUsers` store action** [stores/queries.ts:136] — backend hardcodes `user_filters: [{ type: 'user' }]`, silently limiting results to `user` type; enhancement beyond spec scope.
-- **Backend `check`: `allowed` undefined if OpenFGA omits field** [backend/services/query-service.ts] — story 4.1 code; add `?? false` guard.
-- **Backend `expand`: crash if tree has no `root` field** [backend/services/query-service.ts] — story 4.1 code; add null check before returning tree.
-- **Backend routes: Express 4 async errors need explicit try/catch** [backend/routes/queries.ts] — in Express 4, unhandled async rejections hang or crash; story 4.1 code.
+- ~~**Backend `check`: `allowed` undefined if OpenFGA omits field**~~ — fixed 2026-04-04: `data.allowed ?? false` in query-service.ts.
+- ~~**Backend `expand`: crash if tree has no `root` field**~~ — fixed 2026-04-04: `data.tree ?? null` in query-service.ts.
+- **Backend routes: Express async errors** — not applicable; project uses Express 5 which auto-catches async handler rejections.
 - **`isLeaf` false for `leaf: {}`** [components/query/ExpandTreeNode.vue:38-40] — empty leaf object results in no leaf content rendered; unusual edge case for well-formed OpenFGA responses.
 - **Shared `expandResult` between `runExpand` (WhyButton) and `expand` tab** [stores/queries.ts:48] — WhyButton overwrites Expand tab result and vice-versa; intentional per dev notes ("same tab area, no conflict").
 - **`QueryConsole.vue` shows tabs when model has no `type_definitions`** [views/QueryConsole.vue:51] — model is non-null but empty; all AppSelects show placeholder, buttons stay disabled; edge case UX.
@@ -130,3 +134,9 @@
 - **Empty storeId in GET /api/connection** [connection.ts:11] — when `OPENFGA_STORE_ID` is not set, response includes `storeId: ""`. Could return `null` or omit the field. Frontend already handles this case.
 - **`validate` middleware coverage on future routes** [routes/stores.ts] — stores route does not yet exist; reminder to apply `validate()` middleware when it is created in Story 1.6.
 - **`updateApiKey` dead code** [openfga-client.ts:23-25] — method is declared but no route calls it. Will become live when/if an API key update endpoint is added; low priority until then.
+
+## Deferred from: code review of 11-2-connection-store-robustness-and-ux-polish (2026-04-03)
+
+- **"No stores found" li lacks ARIA role** [StoreSelector.vue] — plain `<li>` inside `role="listbox"` is technically non-conformant (no `role="option"`). Intentional to prevent HeadlessUI treating it as selectable. Low priority for internal tool; consider `role="none"` on the `<li>` if accessibility audit is required.
+- **Inconsistent error behavior: stores.ts clears storeList, connection.ts keeps stale stores** [stores.ts / connection.ts] — two separate store systems manage overlapping data (OpenFGA store list) with different failure policies. Pre-existing architectural split; would require a shared stores-state layer to resolve cleanly.
+- **storeList reset on retry failure causes empty-state flash** [stores.ts] — when fetchStores fails after a prior success, StoreAdmin shows "No stores" immediately. Intentional per AC3 but jarring UX. Consider optimistic keep + error banner as an alternative policy in a future UX pass.
