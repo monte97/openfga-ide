@@ -35,7 +35,7 @@
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
 generated: 2026-03-26
-last_updated: 2026-04-04T00:00:00Z
+last_updated: 2026-04-08T00:00:00Z
 project: openfga-viewer
 project_key: NOKEY
 tracking_system: file-system
@@ -112,7 +112,7 @@ development_status:
   epic-10-retrospective: done
 
   # Epic 11: Async Safety & State Cleanup
-  epic-11: in-progress
+  epic-11: done
   11-1-suite-switch-async-safety-and-state-reset: done
   11-2-connection-store-robustness-and-ux-polish: done
-  epic-11-retrospective: optional
+  epic-11-retrospective: done
