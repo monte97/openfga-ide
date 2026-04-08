@@ -7,6 +7,7 @@ import SuiteJsonEditor from './SuiteJsonEditor.vue'
 
 const props = defineProps<{
   suite: SuiteListItem
+  active?: boolean
 }>()
 
 const suiteStore = useSuiteStore()
@@ -28,6 +29,11 @@ onUnmounted(() => {
 watch(() => props.suite.id, () => {
   fixtureValidationError.value = null
   if (fixtureSaveTimer !== null) clearTimeout(fixtureSaveTimer)
+})
+
+// Clear validation error when tab becomes active — prevents stale banner after tab switch
+watch(() => props.active, (isActive) => {
+  if (isActive) fixtureValidationError.value = null
 })
 
 function validateFixtureStructure(parsed: unknown): string | null {

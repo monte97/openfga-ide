@@ -245,6 +245,34 @@ describe('FixtureEditor', () => {
     expect(mockStore.saveDefinition).toHaveBeenCalledWith('suite-1', expect.any(Object))
   })
 
+  it('clears validation banner when tab becomes active again after a switch', async () => {
+    const mockStore = makeSuiteStoreMock({
+      activeSuite: { ...sampleSuite, definition: { groups: [], fixture: sampleFixture } },
+    })
+    vi.mocked(useSuiteStore).mockReturnValue(mockStore as unknown as ReturnType<typeof useSuiteStore>)
+    const wrapper = mount(FixtureEditor, {
+      props: { suite: sampleSuite, active: true },
+      attachTo: document.body,
+      global: { plugins: [createPinia()] },
+    })
+    wrappers.push(wrapper)
+
+    // Trigger a structural validation error
+    const jsonEditor = wrapper.findComponent({ name: 'SuiteJsonEditor' })
+    await jsonEditor.vm.$emit('update:modelValue', JSON.stringify({ tuples: 'not-an-array' }))
+    await nextTick()
+    expect(wrapper.find('[data-testid="fixture-validation-banner"]').exists()).toBe(true)
+
+    // Switch away from fixture tab
+    await wrapper.setProps({ active: false })
+    await nextTick()
+
+    // Switch back to fixture tab — banner must be gone
+    await wrapper.setProps({ active: true })
+    await nextTick()
+    expect(wrapper.find('[data-testid="fixture-validation-banner"]').exists()).toBe(false)
+  })
+
   it('clears validation banner when suite.id changes', async () => {
     const mockStore = makeSuiteStoreMock({
       activeSuite: { ...sampleSuite, definition: { groups: [], fixture: sampleFixture } },

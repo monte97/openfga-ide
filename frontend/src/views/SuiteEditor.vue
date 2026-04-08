@@ -422,7 +422,7 @@ async function onRemoveTestCase(groupId: string, testCaseId: string) {
           role="tabpanel"
           class="flex-1 overflow-hidden"
         >
-          <FixtureEditor :suite="suite" />
+          <FixtureEditor :suite="suite" :active="editorStore.editorMode === 'fixture'" />
         </div>
       </div>
     </div>
