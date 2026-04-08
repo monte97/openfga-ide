@@ -57,7 +57,7 @@ beforeEach(() => {
 })
 
 const sampleSuite = {
-  id: 'suite-uuid-1',
+  id: 'f47ac10b-58cc-4372-a567-0e02b2c3d479',
   name: 'My Suite',
   description: null,
   tags: [],
@@ -94,7 +94,7 @@ describe('POST /api/suites', () => {
     })
     expect(res.status).toBe(201)
     const body = await res.json() as Record<string, unknown>
-    expect(body.id).toBe('suite-uuid-1')
+    expect(body.id).toBe('f47ac10b-58cc-4372-a567-0e02b2c3d479')
   })
 
   it('returns 400 when name is missing', async () => {
@@ -121,20 +121,27 @@ describe('POST /api/suites', () => {
 describe('GET /api/suites/:suiteId', () => {
   it('returns suite when found', async () => {
     mockGetSuite.mockResolvedValue(sampleSuite)
-    const res = await fetch(`${base}/api/suites/suite-uuid-1`)
+    const res = await fetch(`${base}/api/suites/f47ac10b-58cc-4372-a567-0e02b2c3d479`)
     expect(res.status).toBe(200)
     const body = await res.json() as Record<string, unknown>
-    expect(body.id).toBe('suite-uuid-1')
+    expect(body.id).toBe('f47ac10b-58cc-4372-a567-0e02b2c3d479')
   })
 
   it('returns 404 when suite not found', async () => {
     mockGetSuite.mockRejectedValue(
       Object.assign(new Error('Suite not found'), { statusCode: 404 }),
     )
-    const res = await fetch(`${base}/api/suites/nonexistent`)
+    const res = await fetch(`${base}/api/suites/f47ac10b-58cc-4372-a567-0e02b2c3d400`)
     expect(res.status).toBe(404)
     const body = await res.json() as Record<string, unknown>
     expect(body).toHaveProperty('error', 'Suite not found')
+  })
+
+  it('returns 400 when suiteId is not a valid UUID', async () => {
+    const res = await fetch(`${base}/api/suites/not-a-uuid`)
+    expect(res.status).toBe(400)
+    const body = await res.json() as Record<string, unknown>
+    expect(body).toHaveProperty('error', 'Validation error')
   })
 })
 
@@ -142,7 +149,7 @@ describe('PUT /api/suites/:suiteId', () => {
   it('updates suite and returns updated', async () => {
     const updated = { ...sampleSuite, name: 'Updated' }
     mockUpdateSuite.mockResolvedValue(updated)
-    const res = await fetch(`${base}/api/suites/suite-uuid-1`, {
+    const res = await fetch(`${base}/api/suites/f47ac10b-58cc-4372-a567-0e02b2c3d479`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'Updated' }),
@@ -153,7 +160,7 @@ describe('PUT /api/suites/:suiteId', () => {
   })
 
   it('returns 400 for invalid definition structure', async () => {
-    const res = await fetch(`${base}/api/suites/suite-uuid-1`, {
+    const res = await fetch(`${base}/api/suites/f47ac10b-58cc-4372-a567-0e02b2c3d479`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ definition: { groups: 'not-an-array' } }),
@@ -165,7 +172,7 @@ describe('PUT /api/suites/:suiteId', () => {
     mockUpdateSuite.mockRejectedValue(
       Object.assign(new Error('Suite not found'), { statusCode: 404 }),
     )
-    const res = await fetch(`${base}/api/suites/nonexistent`, {
+    const res = await fetch(`${base}/api/suites/f47ac10b-58cc-4372-a567-0e02b2c3d400`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ name: 'X' }),
@@ -177,7 +184,7 @@ describe('PUT /api/suites/:suiteId', () => {
     mockUpdateSuite.mockRejectedValue(
       Object.assign(new Error('No fields to update'), { statusCode: 400 }),
     )
-    const res = await fetch(`${base}/api/suites/suite-uuid-1`, {
+    const res = await fetch(`${base}/api/suites/f47ac10b-58cc-4372-a567-0e02b2c3d479`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({}),
@@ -188,7 +195,7 @@ describe('PUT /api/suites/:suiteId', () => {
   it('accepts description: null to clear the field', async () => {
     const cleared = { ...sampleSuite, description: null }
     mockUpdateSuite.mockResolvedValue(cleared)
-    const res = await fetch(`${base}/api/suites/suite-uuid-1`, {
+    const res = await fetch(`${base}/api/suites/f47ac10b-58cc-4372-a567-0e02b2c3d479`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ description: null }),
@@ -202,7 +209,7 @@ describe('PUT /api/suites/:suiteId', () => {
 describe('GET /api/suites/:suiteId/export', () => {
   it('returns export shape without id/timestamps', async () => {
     mockGetSuite.mockResolvedValue(sampleSuite)
-    const res = await fetch(`${base}/api/suites/suite-uuid-1/export`)
+    const res = await fetch(`${base}/api/suites/f47ac10b-58cc-4372-a567-0e02b2c3d479/export`)
     expect(res.status).toBe(200)
     const body = await res.json() as Record<string, unknown>
     expect(body).toEqual({
@@ -220,7 +227,7 @@ describe('GET /api/suites/:suiteId/export', () => {
     mockGetSuite.mockRejectedValue(
       Object.assign(new Error('Suite not found'), { statusCode: 404 }),
     )
-    const res = await fetch(`${base}/api/suites/nonexistent/export`)
+    const res = await fetch(`${base}/api/suites/f47ac10b-58cc-4372-a567-0e02b2c3d400/export`)
     expect(res.status).toBe(404)
     const body = await res.json() as Record<string, unknown>
     expect(body).toHaveProperty('error', 'Suite not found')
@@ -230,7 +237,7 @@ describe('GET /api/suites/:suiteId/export', () => {
 describe('DELETE /api/suites/:suiteId', () => {
   it('returns 204 on successful delete', async () => {
     mockDeleteSuite.mockResolvedValue(undefined)
-    const res = await fetch(`${base}/api/suites/suite-uuid-1`, {
+    const res = await fetch(`${base}/api/suites/f47ac10b-58cc-4372-a567-0e02b2c3d479`, {
       method: 'DELETE',
     })
     expect(res.status).toBe(204)
@@ -240,7 +247,7 @@ describe('DELETE /api/suites/:suiteId', () => {
     mockDeleteSuite.mockRejectedValue(
       Object.assign(new Error('Suite not found'), { statusCode: 404 }),
     )
-    const res = await fetch(`${base}/api/suites/nonexistent`, {
+    const res = await fetch(`${base}/api/suites/f47ac10b-58cc-4372-a567-0e02b2c3d400`, {
       method: 'DELETE',
     })
     expect(res.status).toBe(404)

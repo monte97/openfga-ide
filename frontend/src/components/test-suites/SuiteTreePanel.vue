@@ -51,14 +51,21 @@ function sortedTestCases(group: TestGroup): TestCase[] {
   })
 }
 
-function groupRatio(group: TestGroup): { passed: number; total: number } | null {
-  if ((props.results ?? []).length === 0) return null
-  const relevant = group.testCases.filter((tc) => getResult(tc) !== undefined)
-  if (relevant.length === 0) return null
-  return {
-    passed: relevant.filter((tc) => getResult(tc)?.passed).length,
-    total: relevant.length,
+const groupRatioMap = computed(() => {
+  const map = new Map<string, { passed: number; total: number } | null>()
+  if ((props.results ?? []).length === 0) return map
+  for (const group of props.definition.groups) {
+    const relevant = group.testCases.filter((tc) => getResult(tc) !== undefined)
+    map.set(group.id, relevant.length === 0 ? null : {
+      passed: relevant.filter((tc) => getResult(tc)?.passed).length,
+      total: relevant.length,
+    })
   }
+  return map
+})
+
+function groupRatio(group: TestGroup): { passed: number; total: number } | null {
+  return groupRatioMap.value.get(group.id) ?? null
 }
 
 const flatNodes = computed((): FlatNode[] => {
@@ -75,10 +82,11 @@ const flatNodes = computed((): FlatNode[] => {
 })
 
 const focusedNodeId = ref<string | null>(null)
+const treeRoot = ref<HTMLElement | null>(null)
 
 function focusNode(id: string) {
   focusedNodeId.value = id
-  const el = document.querySelector(`[data-node-id="${id}"]`) as HTMLElement | null
+  const el = treeRoot.value?.querySelector(`[data-node-id="${id}"]`) as HTMLElement | null
   el?.focus()
 }
 
@@ -140,6 +148,7 @@ function getTestCaseLabel(tc: TestCase): string {
 
 <template>
   <div
+    ref="treeRoot"
     role="tree"
     aria-label="Suite tree"
     class="flex flex-col h-full overflow-y-auto py-2 focus:outline-none"
@@ -227,13 +236,13 @@ function getTestCaseLabel(tc: TestCase): string {
             v-if="getResult(tc)?.passed === true"
             class="size-3.5 shrink-0 text-success"
             aria-hidden="true"
-            :data-testid="`tc-result-pass`"
+            :data-testid="`tc-result-pass-${tc.id}`"
           />
           <XCircle
             v-else-if="getResult(tc) && !getResult(tc)!.passed"
             class="size-3.5 shrink-0 text-error"
             aria-hidden="true"
-            :data-testid="`tc-result-fail`"
+            :data-testid="`tc-result-fail-${tc.id}`"
           />
           <span
             v-else

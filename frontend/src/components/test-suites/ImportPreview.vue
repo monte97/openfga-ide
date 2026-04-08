@@ -24,7 +24,15 @@ const fileInput = ref<HTMLInputElement | null>(null)
 
 const loadError = ref<string | null>(null)
 
+function isJsonFile(file: File): boolean {
+  return file.type === 'application/json' || file.name.endsWith('.json')
+}
+
 function loadFile(file: File) {
+  if (!isJsonFile(file)) {
+    loadError.value = 'Only JSON files are supported.'
+    return
+  }
   loadError.value = null
   const reader = new FileReader()
   reader.onload = (e) => {

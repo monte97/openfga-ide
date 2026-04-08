@@ -197,7 +197,7 @@ describe('SuiteTreePanel', () => {
         expandedGroupIds: new Set(['group-1']),
         results: [passResult],
       })
-      expect(wrapper.find('[data-testid="tc-result-pass"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid^="tc-result-pass-"]').exists()).toBe(true)
     })
 
     it('shows fail icon (tc-result-fail) for a failed test case', () => {
@@ -205,7 +205,7 @@ describe('SuiteTreePanel', () => {
         expandedGroupIds: new Set(['group-1']),
         results: [{ ...failResult, passed: false }],
       })
-      expect(wrapper.find('[data-testid="tc-result-fail"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid^="tc-result-fail-"]').exists()).toBe(true)
     })
 
     it('failed test cases sort before passed test cases in expanded group', () => {
