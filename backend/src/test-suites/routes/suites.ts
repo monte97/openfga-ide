@@ -1,4 +1,4 @@
-import { Router } from 'express'
+import { Router, type Request } from 'express'
 import { validate } from '../../middleware/validate.js'
 import { createSuiteSchema, updateSuiteSchema } from '../schemas/suite.js'
 import * as suiteService from '../services/suite-service.js'
@@ -23,7 +23,7 @@ router.post('/api/suites', validate(createSuiteSchema), async (req, res, next) =
   }
 })
 
-router.get('/api/suites/:suiteId', async (req, res, next) => {
+router.get('/api/suites/:suiteId', async (req: Request<{ suiteId: string }>, res, next) => {
   try {
     const suite = await suiteService.getSuite(req.params.suiteId)
     res.json(suite)
@@ -32,7 +32,7 @@ router.get('/api/suites/:suiteId', async (req, res, next) => {
   }
 })
 
-router.get('/api/suites/:suiteId/export', async (req, res, next) => {
+router.get('/api/suites/:suiteId/export', async (req: Request<{ suiteId: string }>, res, next) => {
   try {
     const suite = await suiteService.getSuite(req.params.suiteId)
     res.json({
@@ -46,7 +46,7 @@ router.get('/api/suites/:suiteId/export', async (req, res, next) => {
   }
 })
 
-router.put('/api/suites/:suiteId', validate(updateSuiteSchema), async (req, res, next) => {
+router.put('/api/suites/:suiteId', validate(updateSuiteSchema), async (req: Request<{ suiteId: string }>, res, next) => {
   try {
     const suite = await suiteService.updateSuite(req.params.suiteId, req.body)
     res.json(suite)
@@ -55,7 +55,7 @@ router.put('/api/suites/:suiteId', validate(updateSuiteSchema), async (req, res,
   }
 })
 
-router.delete('/api/suites/:suiteId', async (req, res, next) => {
+router.delete('/api/suites/:suiteId', async (req: Request<{ suiteId: string }>, res, next) => {
   try {
     await suiteService.deleteSuite(req.params.suiteId)
     res.status(204).send()
