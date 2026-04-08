@@ -19,6 +19,8 @@ const suite: SuiteListItem = {
   createdAt: '2026-03-31T10:00:00Z',
   updatedAt: '2026-03-31T10:00:00Z',
   lastRun: null,
+  groupCount: 0,
+  testCount: 0,
 }
 
 const wrappers: ReturnType<typeof mount>[] = []

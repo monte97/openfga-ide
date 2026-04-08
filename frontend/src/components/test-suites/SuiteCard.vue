@@ -123,7 +123,7 @@ onUnmounted(() => document.removeEventListener('mousedown', closeOnOutside))
 
       <!-- Footer: counts + last-run badge -->
       <div class="flex items-center gap-4 mt-3 text-xs text-text-secondary">
-        <span>— groups · — tests</span>
+        <span>{{ suite.groupCount }} {{ suite.groupCount === 1 ? 'group' : 'groups' }} · {{ suite.testCount }} {{ suite.testCount === 1 ? 'test' : 'tests' }}</span>
 
         <!-- Never run -->
         <span

@@ -19,6 +19,8 @@ const dbRow = {
   definition: null,
   created_at: NOW,
   updated_at: NOW,
+  group_count: 0,
+  test_count: 0,
 }
 
 describe('suite-repository', () => {
@@ -41,6 +43,8 @@ describe('suite-repository', () => {
       expect(item.name).toBe('My Suite')
       expect(item.tags).toEqual(['tag1', 'tag2'])
       expect(item.createdAt).toBe(NOW.toISOString())
+      expect(item.groupCount).toBe(0)
+      expect(item.testCount).toBe(0)
     })
 
     it('returns lastRun as null when no run exists for the suite', async () => {
@@ -86,6 +90,22 @@ describe('suite-repository', () => {
       mockQuery.mockResolvedValue({ rows: [] })
       const result = await findAll()
       expect(result).toEqual([])
+    })
+
+    it('returns groupCount and testCount from definition', async () => {
+      const rowWithCounts = { ...dbRow, group_count: 2, test_count: 5 }
+      mockQuery.mockResolvedValue({ rows: [rowWithCounts] })
+      const result = await findAll()
+      expect(result[0].groupCount).toBe(2)
+      expect(result[0].testCount).toBe(5)
+    })
+
+    it('returns groupCount 0 and testCount 0 when definition is null', async () => {
+      const rowWithNull = { ...dbRow, group_count: 0, test_count: 0 }
+      mockQuery.mockResolvedValue({ rows: [rowWithNull] })
+      const result = await findAll()
+      expect(result[0].groupCount).toBe(0)
+      expect(result[0].testCount).toBe(0)
     })
   })
 

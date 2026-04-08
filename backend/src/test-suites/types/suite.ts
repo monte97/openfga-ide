@@ -50,6 +50,8 @@ export interface SuiteListItem {
   createdAt: string
   updatedAt: string
   lastRun: SuiteLastRun | null
+  groupCount: number
+  testCount: number
 }
 
 export interface CreateSuiteInput {

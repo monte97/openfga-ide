@@ -13,6 +13,8 @@ export interface SuiteListItem {
   createdAt: string
   updatedAt: string
   lastRun: { status: string; summary: RunSummary | null } | null
+  groupCount: number
+  testCount: number
 }
 
 export interface CreateSuiteInput {

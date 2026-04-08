@@ -13,6 +13,8 @@ function mapRowToSuiteListItem(row: Record<string, unknown>): SuiteListItem {
     lastRun: row.last_run_status
       ? { status: row.last_run_status as string, summary: (row.last_run_summary as RunSummary | null) ?? null }
       : null,
+    groupCount: (row.group_count as number) ?? 0,
+    testCount: (row.test_count as number) ?? 0,
   }
 }
 
@@ -29,7 +31,12 @@ export async function findAll(): Promise<SuiteListItem[]> {
     `SELECT
        s.id, s.name, s.description, s.tags, s.created_at, s.updated_at,
        lr.status AS last_run_status,
-       lr.summary AS last_run_summary
+       lr.summary AS last_run_summary,
+       jsonb_array_length(COALESCE(s.definition->'groups', '[]'::jsonb)) AS group_count,
+       (
+         SELECT COALESCE(SUM(jsonb_array_length(g->'testCases')), 0)
+         FROM jsonb_array_elements(COALESCE(s.definition->'groups', '[]'::jsonb)) AS g
+       ) AS test_count
      FROM suites s
      LEFT JOIN LATERAL (
        SELECT status, summary
