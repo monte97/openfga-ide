@@ -60,8 +60,13 @@ describe('ToastContainer', () => {
     expect(wrapper.text()).not.toContain('Dismiss me')
   })
 
-  it('has aria-live="polite" on container', () => {
+  it('has aria-live="polite" for non-error notifications', () => {
     const wrapper = mount(ToastContainer)
     expect(wrapper.find('[aria-live="polite"]').exists()).toBe(true)
+  })
+
+  it('has aria-live="assertive" for error notifications', () => {
+    const wrapper = mount(ToastContainer)
+    expect(wrapper.find('[aria-live="assertive"]').exists()).toBe(true)
   })
 })
