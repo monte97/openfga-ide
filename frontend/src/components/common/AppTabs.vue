@@ -11,9 +11,10 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const selectedIndex = computed(() =>
-  props.tabs.findIndex((t) => t.key === props.modelValue)
-)
+const selectedIndex = computed(() => {
+  const idx = props.tabs.findIndex((t) => t.key === props.modelValue)
+  return idx === -1 ? 0 : idx
+})
 
 function onTabChange(index: number) {
   emit('update:modelValue', props.tabs[index].key)
