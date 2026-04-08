@@ -1,5 +1,5 @@
 import { z } from 'zod'
 
 export const modelParamsSchema = z.object({
-  storeId: z.string().min(1),
+  storeId: z.string().trim().min(1),
 })

@@ -1,9 +1,9 @@
 import { z } from 'zod'
 
 const testCaseSchema = z.object({
-  user: z.string().min(1),
-  relation: z.string().min(1),
-  object: z.string().min(1),
+  user: z.string().trim().min(1),
+  relation: z.string().trim().min(1),
+  object: z.string().trim().min(1),
   expected: z.boolean(),
   meta: z
     .object({
@@ -15,7 +15,7 @@ const testCaseSchema = z.object({
 })
 
 const testGroupSchema = z.object({
-  name: z.string().min(1),
+  name: z.string().trim().min(1),
   description: z.string().optional(),
   testCases: z.array(testCaseSchema).max(500),
 })
@@ -31,14 +31,14 @@ const suiteDefinitionSchema = z.object({
 })
 
 export const createSuiteSchema = z.object({
-  name: z.string().min(1).max(255),
+  name: z.string().trim().min(1).max(255),
   description: z.string().optional(),
   tags: z.array(z.string()).optional(),
   definition: suiteDefinitionSchema.optional(),
 })
 
 export const updateSuiteSchema = z.object({
-  name: z.string().min(1).max(255).optional(),
+  name: z.string().trim().min(1).max(255).optional(),
   description: z.string().nullable().optional(),
   tags: z.array(z.string()).optional(),
   definition: suiteDefinitionSchema.optional(),

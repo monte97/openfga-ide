@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 export const tupleParamsSchema = z.object({
-  storeId: z.string().min(1),
+  storeId: z.string().trim().min(1),
 })
 
 export const tupleQuerySchema = z.object({
@@ -13,9 +13,9 @@ export const tupleQuerySchema = z.object({
 })
 
 export const tupleBodySchema = z.object({
-  user: z.string().min(1),
-  relation: z.string().min(1),
-  object: z.string().min(1),
+  user: z.string().trim().min(1),
+  relation: z.string().trim().min(1),
+  object: z.string().trim().min(1),
 })
 
 export const tupleBatchDeleteSchema = z.object({
