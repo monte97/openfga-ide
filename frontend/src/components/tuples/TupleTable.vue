@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useVueTable, getCoreRowModel, createColumnHelper, FlexRender } from '@tanstack/vue-table'
+import { useVueTable, getCoreRowModel, createColumnHelper } from '@tanstack/vue-table'
 import { Trash2 } from 'lucide-vue-next'
 import TypeBadge from '@/components/common/TypeBadge.vue'
 import AppButton from '@/components/common/AppButton.vue'

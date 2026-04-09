@@ -118,6 +118,7 @@ describe('SuiteTreePanel', () => {
     )
     testItem!.trigger('click')
     expect(wrapper.emitted('select')).toBeTruthy()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((wrapper.emitted('select')![0] as any[])[0].id).toBe('test-1')
   })
 

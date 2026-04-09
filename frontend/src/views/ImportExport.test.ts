@@ -196,6 +196,7 @@ describe('ImportExport.vue', () => {
     const wrapper = mount(ImportExport, { global: { plugins: [pinia], ...mountOptions.global } })
     await dropFileOnDropzone(wrapper, makeFile('{}', 'backup.json'))
     // Directly set parsedPayload to work around Vue's ref auto-unwrapping via template ref
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(wrapper.vm as any).parsedPayload = { model: null, tuples: [{ user: 'user:alice', relation: 'viewer', object: 'doc:1' }] }
     const btn = wrapper.findAll('button').find((b) => b.text().includes('Import to Current Store'))
     await btn!.trigger('click')

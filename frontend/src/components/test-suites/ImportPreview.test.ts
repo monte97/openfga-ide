@@ -41,9 +41,8 @@ function makeFileReaderClass(content: string) {
   return class MockFileReader {
     onload: ((e: ProgressEvent) => void) | null = null
     readAsText() {
-      const self = this
       setTimeout(() => {
-        self.onload?.({ target: { result: content } } as unknown as ProgressEvent)
+        this.onload?.({ target: { result: content } } as unknown as ProgressEvent)
       }, 0)
     }
   }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { Settings, Store } from 'lucide-vue-next'
+import { ref, onMounted } from 'vue'
+import { Store } from 'lucide-vue-next'
 import { useStoresStore } from '@/stores/stores'
 import { useConnectionStore } from '@/stores/connection'
 import { useImportExportStore } from '@/stores/importExport'
@@ -25,10 +25,6 @@ const creating = ref(false)
 
 const pendingDeleteId = ref<string | null>(null)
 const pendingDeleteName = ref('')
-
-const storeToDelete = computed(() =>
-  storesStore.storeList.find((s) => s.id === pendingDeleteId.value) ?? null
-)
 
 // Restore dialog state
 const restoreDialogOpen = ref(false)

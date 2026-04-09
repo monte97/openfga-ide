@@ -99,6 +99,7 @@ describe('TestCaseForm', () => {
     await wrapper.find('[aria-label="Toggle expected result"]').trigger('click')
     const emitted = wrapper.emitted('update')
     expect(emitted).toBeTruthy()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((emitted![0] as any[])[2]).toMatchObject({ expected: false })
   })
 
@@ -106,6 +107,7 @@ describe('TestCaseForm', () => {
     const wrapper = mountForm({ ...sampleTestCase, expected: false })
     await wrapper.find('[aria-label="Toggle expected result"]').trigger('click')
     const emitted = wrapper.emitted('update')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((emitted![0] as any[])[2]).toMatchObject({ expected: true })
   })
 
@@ -151,6 +153,7 @@ describe('TestCaseForm', () => {
     await select.vm.$emit('update:modelValue', 'user:carol')
     await select.vm.$emit('blur')
     const emitted = wrapper.emitted('update')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const patch = (emitted!.at(-1) as any[])[2]
     expect(patch).toMatchObject({ user: 'user:carol' })
   })
@@ -178,6 +181,7 @@ describe('TestCaseForm', () => {
     await textarea.trigger('blur')
     const emitted = wrapper.emitted('update')
     expect(emitted).toBeTruthy()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((emitted!.at(-1) as any[])[2]).toMatchObject({ description: 'new description' })
   })
 
@@ -204,6 +208,7 @@ describe('TestCaseForm', () => {
     await tagInput.trigger('blur')
     const emitted = wrapper.emitted('update')
     expect(emitted).toBeTruthy()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((emitted!.at(-1) as any[])[2]).toMatchObject({ tags: ['auth', 'new-tag'] })
   })
 
@@ -211,7 +216,9 @@ describe('TestCaseForm', () => {
     const wrapper = mountForm()
     await wrapper.find('[aria-label="Toggle expected result"]').trigger('click')
     const emitted = wrapper.emitted('update')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((emitted![0] as any[])[0]).toBe('group-1')
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect((emitted![0] as any[])[1]).toBe('test-1')
   })
 })

@@ -49,6 +49,7 @@ describe('useModelOptions', () => {
 
   it('returns empty arrays when type_definitions is missing', () => {
     const modelStore = useModelStore()
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     modelStore.json = {} as any
     const { typeOptions, relationOptions } = useModelOptions()
     expect(typeOptions.value).toEqual([])

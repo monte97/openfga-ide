@@ -33,6 +33,7 @@ function makeEdge(source: string, target: string, label: string): Edge {
 describe('useRelationshipGraphStore', () => {
   let nodesRef: ReturnType<typeof ref<Node[]>>
   let edgesRef: ReturnType<typeof ref<Edge[]>>
+  let tupleStoreMock: ReturnType<typeof useTupleStore>
 
   beforeEach(() => {
     setActivePinia(createPinia())
@@ -46,14 +47,15 @@ describe('useRelationshipGraphStore', () => {
       layoutDone: ref(true),
     })
 
-    vi.mocked(useTupleStore).mockReturnValue({
+    tupleStoreMock = {
       loading: false,
       error: null,
       tuples: [],
       fetchTuples: vi.fn().mockResolvedValue(undefined),
       resetTuples: vi.fn(),
       clearFilters: vi.fn(),
-    } as unknown as ReturnType<typeof useTupleStore>)
+    } as unknown as ReturnType<typeof useTupleStore>
+    vi.mocked(useTupleStore).mockReturnValue(tupleStoreMock)
   })
 
   it('hiddenTypes is empty on initialization', () => {
@@ -106,7 +108,6 @@ describe('useRelationshipGraphStore', () => {
 
   it('loadGraph resets filters/tuples and fetches tuples for the given storeId', async () => {
     const store = useRelationshipGraphStore()
-    const tupleStoreMock = vi.mocked(useTupleStore).mock.results.at(-1)!.value
     await store.loadGraph('store-42')
     expect(tupleStoreMock.clearFilters).toHaveBeenCalled()
     expect(tupleStoreMock.resetTuples).toHaveBeenCalled()

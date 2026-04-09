@@ -138,7 +138,7 @@ describe('useStoresStore', () => {
       const store = useStoresStore()
       store.storeList = [{ id: 'del-1', name: 'Store', created_at: '', updated_at: '' }]
       fetchMock.mockResolvedValue(makeErrorResponse('Not Found', 404))
-      await expect(store.deleteStore('del-1')).rejects.toThrow()
+      await expect(store.deleteStore('del-1')).rejects.toThrow('Not Found')
       expect(store.storeList).toHaveLength(1)
     })
   })

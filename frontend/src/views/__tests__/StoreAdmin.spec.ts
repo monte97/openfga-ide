@@ -316,6 +316,7 @@ describe('StoreAdmin', () => {
     await dropzone.find('div').element.dispatchEvent(dropEvent)
     await flushPromises()
     // Directly set restorePayload to work around Vue's ref auto-unwrapping via template ref
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     ;(wrapper.vm as any).restorePayload = { model: { schema_version: '1.1', type_definitions: [] }, tuples: [{ user: 'user:alice', relation: 'viewer', object: 'doc:1' }] }
 
     // Click Restore button (last one = dialog's Restore)

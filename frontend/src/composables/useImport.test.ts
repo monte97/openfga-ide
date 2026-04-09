@@ -53,7 +53,7 @@ describe('useImport', () => {
     const { useImport } = await import('./useImport')
     const { importing, importError, importToNewStore } = useImport()
 
-    await expect(importToNewStore('X', mockPayload)).rejects.toThrow()
+    await expect(importToNewStore('X', mockPayload)).rejects.toThrow('bad request')
     expect(importError.value).toBeTruthy()
     expect(importing.value).toBe(false)
   })

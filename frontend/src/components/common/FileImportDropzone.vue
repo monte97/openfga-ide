@@ -8,7 +8,7 @@ interface ImportPayload {
   tuples: Array<{ user: string; relation: string; object: string }>
 }
 
-const props = withDefaults(defineProps<{
+withDefaults(defineProps<{
   accept?: string
   disabled?: boolean
 }>(), {
