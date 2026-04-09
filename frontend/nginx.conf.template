@@ -1,0 +1,18 @@
+server {
+    listen 80;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # Vue Router history mode — serve index.html for unknown paths
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Proxy API calls to backend
+    location /api/ {
+        proxy_pass ${BACKEND_URL}/api/;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}
