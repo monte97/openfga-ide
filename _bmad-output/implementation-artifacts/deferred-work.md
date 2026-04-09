@@ -80,8 +80,8 @@
 
 ## Deferred from: code review of 4-1-backend-query-endpoints (2026-03-27)
 
-- **`validate` middleware does not reassign `req.params`/`req.query` after Zod parse** [middleware/validate.ts] — Zod transforms/coercions on params/query are silently discarded; only `req.body` is reassigned. Pre-existing pattern.
-- **Whitespace-only strings pass `z.string().min(1)` validation** [schemas/query.ts] — inputs like `" "` are valid per Zod but invalid in OpenFGA. Pre-existing pattern across all schemas.
+- ~~**`validate` middleware does not reassign `req.params`/`req.query` after Zod parse**~~ — fixed 2026-04-08: `Object.assign` propagates trimmed values for params/query targets; `req.body` replaced as before.
+- ~~**Whitespace-only strings pass `z.string().min(1)` validation**~~ — fixed 2026-04-08: `.trim()` added to all `z.string().min(1)` across 7 backend schema files.
 - **400 response `details` field is Zod issue array, not human-readable string** [middleware/validate.ts] — spec implies string description; actual shape is `ZodIssue[]`. Pre-existing pattern.
 - **No NFR performance test for 1-second end-to-end response time (AC6)** — openfga-client AbortSignal timeout enforces a ceiling; no active assertion in tests.
 - **`storeId` not validated for path-traversal characters** [schemas/query.ts] — `z.string().min(1)` only; value interpolated directly into URL path. Pre-existing pattern across all route schemas.
