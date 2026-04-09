@@ -29,6 +29,12 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8080/healthz || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
 
   backend:
     image: ghcr.io/monte97/openfga-ide/backend:edge
@@ -39,7 +45,8 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - openfga
+      openfga:
+        condition: service_healthy
 
   frontend:
     image: ghcr.io/monte97/openfga-ide/frontend:edge
