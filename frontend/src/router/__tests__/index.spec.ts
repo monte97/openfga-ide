@@ -27,7 +27,6 @@ describe('router', () => {
       routes: (await makeRouter()).getRoutes(),
     })
     await testRouter.push('/')
-    await testRouter.isReady()
     expect(testRouter.currentRoute.value.path).toBe('/model-viewer')
   })
 
