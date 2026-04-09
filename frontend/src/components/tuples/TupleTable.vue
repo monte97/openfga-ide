@@ -14,7 +14,7 @@ const rowSelection = ref<Record<string, boolean>>({})
 const deletingRow = ref<string | null>(null)
 
 function extractType(identifier: string): string {
-  return identifier.split(':')[0]
+  return identifier.split(':')[0] ?? identifier
 }
 
 function tupleId(entry: TupleEntry): string {

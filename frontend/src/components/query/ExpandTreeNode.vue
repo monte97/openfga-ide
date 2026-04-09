@@ -12,8 +12,8 @@ const props = defineProps<{
 const expanded = ref(props.defaultExpanded ?? false)
 
 function extractTypeName(name: string): string {
-  const base = name.includes('#') ? name.split('#')[0] : name
-  return base.split(':')[0] || base
+  const base = name.includes('#') ? (name.split('#')[0] ?? name) : name
+  return base.split(':')[0] ?? base
 }
 
 const nodeType = computed<string | null>(() => {

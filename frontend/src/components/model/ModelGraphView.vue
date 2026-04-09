@@ -14,13 +14,14 @@ import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 
 const modelStore = useModelStore()
 
-const nodeTypes = markRaw({ typeNode: ModelTypeNode })
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const nodeTypes = markRaw({ typeNode: ModelTypeNode }) as any
 const { nodes, edges, layoutDone } = useModelGraph(modelStore.json)
 
 const selectedNode = ref<ModelNodeData | null>(null)
 
-function onNodeClick(_: unknown, node: { data: ModelNodeData }) {
-  selectedNode.value = node.data
+function onNodeClick(event: { node: { data: ModelNodeData } }) {
+  selectedNode.value = event.node.data
 }
 </script>
 

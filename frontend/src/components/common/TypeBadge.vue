@@ -23,7 +23,7 @@ const nodeColorClasses: Record<number, { bg: string; text: string }> = {
 }
 
 const colorIndex = hashTypeName(props.typeName)
-const colors = nodeColorClasses[colorIndex]
+const colors = nodeColorClasses[colorIndex]!
 </script>
 
 <template>

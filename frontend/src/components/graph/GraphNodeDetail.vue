@@ -133,7 +133,7 @@ onUnmounted(() => {
             class="flex items-center gap-2"
           >
             <span class="text-xs text-text-secondary font-mono shrink-0">{{ rel.relation }}</span>
-            <TypeBadge :type-name="rel.connectedEntity.split(':')[0]" />
+            <TypeBadge :type-name="rel.connectedEntity.split(':')[0] ?? rel.connectedEntity" />
             <span class="text-xs text-text-primary font-mono truncate">
               {{ rel.connectedEntity.split(':').slice(1).join(':') }}
             </span>

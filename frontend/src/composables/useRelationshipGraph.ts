@@ -22,7 +22,7 @@ function buildGraph(tuples: TupleEntry[]): { nodes: Node[]; edges: Edge[] } {
   tuples.forEach((t) => {
     for (const entityId of [t.key.user, t.key.object]) {
       if (!entityMap.has(entityId)) {
-        const typeName = entityId.split(':')[0]
+        const typeName = entityId.split(':')[0] ?? entityId
         entityMap.set(entityId, { entityId, typeName, color: getTypeColor(typeName) })
       }
     }

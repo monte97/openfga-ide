@@ -17,7 +17,7 @@ const selectedIndex = computed(() => {
 })
 
 function onTabChange(index: number) {
-  emit('update:modelValue', props.tabs[index].key)
+  emit('update:modelValue', props.tabs[index]!.key)
 }
 </script>
 

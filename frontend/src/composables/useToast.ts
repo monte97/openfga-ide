@@ -16,7 +16,7 @@ export function useToast() {
     if (type === 'error') {
       const errorToasts = toasts.filter((t) => t.type === 'error')
       if (errorToasts.length >= MAX_ERROR_TOASTS) {
-        dismiss(errorToasts[0].id)
+        dismiss(errorToasts[0]!.id)
       }
     }
 
@@ -32,7 +32,7 @@ export function useToast() {
   function dismiss(id: string) {
     const index = toasts.findIndex((t) => t.id === id)
     if (index !== -1) {
-      const toast = toasts[index]
+      const toast = toasts[index]!
       if (toast.timeoutId !== undefined) {
         clearTimeout(toast.timeoutId)
       }

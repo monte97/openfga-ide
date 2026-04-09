@@ -70,8 +70,8 @@ const progressCounter = computed((): string =>
 )
 
 function phaseAriaLabel(idx: number, phaseLabel: string): string {
-  const status = phaseStatuses.value[idx]
-  const checks = PHASES[idx].key === 'checks' ? `, ${progressCounter.value}` : ''
+  const status = phaseStatuses.value[idx] ?? 'pending'
+  const checks = PHASES[idx]?.key === 'checks' ? `, ${progressCounter.value}` : ''
   const elapsed = status === 'running' ? `, ${elapsedDisplay.value}` : ''
   return `${phaseLabel}: ${status}${checks}${elapsed}`
 }

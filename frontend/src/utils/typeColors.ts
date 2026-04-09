@@ -29,5 +29,5 @@ export function getTypeColorIndex(typeName: string): number {
 }
 
 export function getTypeColor(typeName: string): string {
-  return NODE_COLORS[getTypeColorIndex(typeName)]
+  return NODE_COLORS[getTypeColorIndex(typeName)] ?? '#808080'
 }

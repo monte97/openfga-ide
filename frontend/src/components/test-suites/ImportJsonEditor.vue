@@ -40,8 +40,8 @@ function zodLinter(editorView: EditorView): Diagnostic[] {
   if (result.success) return []
 
   return result.error.issues.map((issue) => {
-    const pathStr = issue.path.join('.')
-    const offset = findPathOffset(text, issue.path)
+    const pathStr = issue.path.filter((p): p is string | number => typeof p !== 'symbol').join('.')
+    const offset = findPathOffset(text, issue.path.filter((p): p is string | number => typeof p !== 'symbol'))
     return {
       from: offset,
       to: offset + 1,

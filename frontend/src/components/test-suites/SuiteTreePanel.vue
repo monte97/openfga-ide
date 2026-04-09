@@ -101,11 +101,11 @@ function onKeydown(event: KeyboardEvent) {
   if (event.key === 'ArrowDown') {
     event.preventDefault()
     const next = currentIndex < nodes.length - 1 ? currentIndex + 1 : 0
-    focusNode(nodes[next].id)
+    focusNode(nodes[next]!.id)
   } else if (event.key === 'ArrowUp') {
     event.preventDefault()
     const prev = currentIndex > 0 ? currentIndex - 1 : nodes.length - 1
-    focusNode(nodes[prev].id)
+    focusNode(nodes[prev]!.id)
   } else if (event.key === 'ArrowRight') {
     event.preventDefault()
     const node = currentIndex >= 0 ? nodes[currentIndex] : null

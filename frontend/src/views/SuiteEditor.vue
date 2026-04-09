@@ -188,7 +188,7 @@ async function onAddGroup() {
   suiteStore.addGroup()
   const groups = suiteStore.activeSuite?.definition.groups ?? []
   if (groups.length > 0) {
-    editorStore.expandGroup(groups[groups.length - 1].id)
+    editorStore.expandGroup(groups[groups.length - 1]!.id)
   }
   if (suiteStore.activeSuite) {
     try {
