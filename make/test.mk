@@ -1,4 +1,4 @@
-# ── Test — unit ────────────────────────────────────────────────────────────────
+# ── Test — unit (bulk) ─────────────────────────────────────────────────────────
 
 test: test-backend test-frontend
 
@@ -7,6 +7,42 @@ test-backend:
 
 test-frontend:
 	npm --prefix frontend run test:unit -- --run
+
+# ── Test — unit (watch) ────────────────────────────────────────────────────────
+
+test-backend-watch:
+	npm --prefix backend run test -- --watch
+
+test-frontend-watch:
+	npm --prefix frontend run test:unit
+
+# ── Test — backend by area ─────────────────────────────────────────────────────
+
+test-backend-routes:
+	npm --prefix backend test -- src/routes/
+
+test-backend-services:
+	npm --prefix backend test -- src/services/
+
+test-backend-middleware:
+	npm --prefix backend test -- src/middleware/
+
+test-backend-suites:
+	npm --prefix backend test -- src/test-suites/
+
+# ── Test — frontend by area ────────────────────────────────────────────────────
+
+test-frontend-stores:
+	npm --prefix frontend run test:unit -- --run src/stores/
+
+test-frontend-components:
+	npm --prefix frontend run test:unit -- --run src/components/
+
+test-frontend-composables:
+	npm --prefix frontend run test:unit -- --run src/composables/
+
+test-frontend-views:
+	npm --prefix frontend run test:unit -- --run src/views/
 
 # ── Test — E2E ────────────────────────────────────────────────────────────────
 

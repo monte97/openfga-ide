@@ -1,4 +1,10 @@
-.PHONY: help dev dev-local dev-detach stop openfga-start openfga-stop build build-backend build-frontend test test-backend test-frontend test-smoke test-functional test-e2e test-e2e-headed test-e2e-list test-e2e-ui e2e-up e2e-down lint format type-check install clean
+.PHONY: help dev dev-local dev-detach stop openfga-start openfga-stop build build-backend build-frontend \
+  test test-backend test-frontend \
+  test-backend-watch test-frontend-watch \
+  test-backend-routes test-backend-services test-backend-middleware test-backend-suites \
+  test-frontend-stores test-frontend-components test-frontend-composables test-frontend-views \
+  test-smoke test-functional test-e2e test-e2e-headed test-e2e-list test-e2e-ui e2e-up e2e-down \
+  lint format type-check install clean
 
 include make/test.mk
 
@@ -18,10 +24,26 @@ help:
 	@echo "  build-backend  Build backend only"
 	@echo "  build-frontend Build frontend only"
 	@echo ""
-	@echo "Test"
-	@echo "  test           Run all unit tests (backend + frontend)"
-	@echo "  test-backend   Run backend unit tests"
-	@echo "  test-frontend  Run frontend unit tests"
+	@echo "Test — bulk"
+	@echo "  test                    Run all unit tests (backend + frontend)"
+	@echo "  test-backend            Run all backend unit tests"
+	@echo "  test-frontend           Run all frontend unit tests"
+	@echo "  test-backend-watch      Backend tests in watch mode"
+	@echo "  test-frontend-watch     Frontend tests in watch mode"
+	@echo ""
+	@echo "Test — backend by area"
+	@echo "  test-backend-routes     Routes only"
+	@echo "  test-backend-services   Services only"
+	@echo "  test-backend-middleware Middleware only"
+	@echo "  test-backend-suites     Test-suite module only"
+	@echo ""
+	@echo "Test — frontend by area"
+	@echo "  test-frontend-stores      Pinia stores only"
+	@echo "  test-frontend-components  Components only"
+	@echo "  test-frontend-composables Composables only"
+	@echo "  test-frontend-views       Views only"
+	@echo ""
+	@echo "Test — E2E"
 	@echo "  test-smoke     Run E2E smoke tests against local dev (no Docker needed)"
 	@echo "  test-functional Run E2E functional tests (requires running backend + DB)"
 	@echo "  test-e2e       Start E2E environment, run all Playwright tests, tear down"
