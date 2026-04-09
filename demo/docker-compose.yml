@@ -1,0 +1,54 @@
+# Quickstart: docker compose -f demo/docker-compose.yml up
+# Then open http://localhost:5173
+#
+# Import demo-store.json via the Import/Export page to get sample data.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: openfga
+      POSTGRES_USER: openfga
+      POSTGRES_PASSWORD: openfga
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openfga"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  openfga:
+    image: openfga/openfga:latest
+    command: run
+    environment:
+      OPENFGA_DATASTORE_ENGINE: postgres
+      OPENFGA_DATASTORE_URI: postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  backend:
+    image: ghcr.io/monte97/openfga-ide/backend:edge
+    environment:
+      PORT: "3000"
+      OPENFGA_URL: http://openfga:8080
+      DATABASE_URL: postgres://openfga:openfga@postgres:5432/openfga?sslmode=disable
+    ports:
+      - "3000:3000"
+    depends_on:
+      - openfga
+
+  frontend:
+    image: ghcr.io/monte97/openfga-ide/frontend:edge
+    environment:
+      BACKEND_URL: http://backend:3000
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
+
+volumes:
+  postgres-data:
