@@ -3,8 +3,12 @@ name: CodeQL
 on:
   push:
     branches: [master]
+    paths-ignore:
+      - '_bmad/**'
   pull_request:
     branches: [master]
+    paths-ignore:
+      - '_bmad/**'
 
 jobs:
   analyze:
@@ -29,6 +33,9 @@ jobs:
         with:
           languages: ${{ matrix.language }}
           queries: security-and-quality
+          config: |
+            paths-ignore:
+              - '_bmad'
 
       - uses: actions/setup-node@v4
         with:
