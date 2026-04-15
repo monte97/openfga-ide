@@ -1,0 +1,21 @@
+{
+  "storeName": "Demo - E-Learning OpenFGA",
+  "description": "Modello e-learning usato negli articoli montelli.dev su OpenFGA. Capability granulari su system:main + gerarchia course -> lesson.",
+  "dsl": "model\n  schema 1.1\n\ntype user\n\ntype group\n  relations\n    define member: [user]\n\ntype system\n  relations\n    define root:             [user, group#member]\n    define blocked:          [user, group#member]\n    define creator:          [user, group#member]\n    define user_manager:     [user, group#member]\n    define settings_manager: [user, group#member]\n\n    define can_insert:          (creator or root) but not blocked\n    define can_manage_users:    (user_manager or root) but not blocked\n    define can_manage_settings: (settings_manager or root) but not blocked\n\ntype course\n  relations\n    define editor: [user, group#member]\n    define viewer: [user, group#member]\n    define can_edit: editor\n    define can_view: viewer or editor\n\ntype lesson\n  relations\n    define parent: [course]\n    define editor: [user, group#member]\n    define can_edit: editor or editor from parent\n    define can_view: editor or viewer from parent or editor from parent\n",
+  "tuples": [
+    { "user": "user:alice", "relation": "member", "object": "group:authors" },
+    { "user": "user:bob",   "relation": "member", "object": "group:authors" },
+    { "user": "user:carol", "relation": "member", "object": "group:reviewers" },
+    { "user": "user:dave",  "relation": "root",         "object": "system:main" },
+    { "user": "user:eve",   "relation": "user_manager", "object": "system:main" },
+    { "user": "user:frank", "relation": "blocked",      "object": "system:main" },
+
+    { "user": "group:authors#member",   "relation": "editor", "object": "course:c1" },
+    { "user": "group:reviewers#member", "relation": "viewer", "object": "course:c1" },
+    { "user": "user:alice",             "relation": "editor", "object": "course:c2" },
+
+    { "user": "course:c1", "relation": "parent", "object": "lesson:l1" },
+    { "user": "course:c1", "relation": "parent", "object": "lesson:l2" },
+    { "user": "course:c2", "relation": "parent", "object": "lesson:l3" }
+  ]
+}

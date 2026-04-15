@@ -1,0 +1,9 @@
+{
+  "storeName": "Demo - Minimal OpenFGA",
+  "description": "Modello minimale per illustrare i concetti base: tupla, DSL, gerarchia via parent.",
+  "dsl": "model\n  schema 1.1\n\ntype user\n\ntype course\n  relations\n    define editor: [user]\n    define can_edit: editor\n\ntype lesson\n  relations\n    define parent: [course]\n    define editor: [user]\n    define can_edit: editor or editor from parent\n",
+  "tuples": [
+    { "user": "user:alice", "relation": "editor", "object": "course:c1" },
+    { "user": "course:c1", "relation": "parent", "object": "lesson:l1" }
+  ]
+}
