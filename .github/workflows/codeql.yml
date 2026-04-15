@@ -5,10 +5,12 @@ on:
     branches: [master]
     paths-ignore:
       - '_bmad/**'
+      - '_bmad-output/**'
   pull_request:
     branches: [master]
     paths-ignore:
       - '_bmad/**'
+      - '_bmad-output/**'
 
 jobs:
   analyze:
@@ -36,6 +38,7 @@ jobs:
           config: |
             paths-ignore:
               - '_bmad'
+              - '_bmad-output'
 
       - uses: actions/setup-node@v4
         with:
