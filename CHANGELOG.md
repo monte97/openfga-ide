@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.0](https://github.com/monte97/openfga-ide/compare/v0.2.0...v0.3.0) (2026-04-15)
+
+
+### Features
+
+* **docs:** add playground screenshot automation for article series ([50e2649](https://github.com/monte97/openfga-ide/commit/50e2649cd6fd8406325c10b6f653a38ffe758344))
+
+
+### Bug Fixes
+
+* patch transitive vulnerabilities via npm audit fix ([31cee19](https://github.com/monte97/openfga-ide/commit/31cee19be7e05b6722aef1db8ff573beb784feb3))
+
 ## [0.2.0](https://github.com/monte97/openfga-ide/compare/v0.1.0...v0.2.0) (2026-04-09)
 
 
