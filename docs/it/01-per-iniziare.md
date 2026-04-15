@@ -4,17 +4,16 @@ openfga-viewer è uno strumento browser per esplorare e testare i store di autor
 
 ## Prerequisiti
 
-- **Node.js** 18 o superiore
-- **npm** 9 o superiore
+- **Node.js** 22 o superiore
+- **npm** 10 o superiore
 - Un'istanza **OpenFGA** in esecuzione (locale o remota)
   - Avvio rapido: `docker run -p 8080:8080 openfga/openfga run`
 
 ## Installazione
 
 ```bash
-git clone https://github.com/your-org/openfga-viewer
-cd openfga-viewer
-npm install
+git clone https://github.com/monte97/openfga-ide
+cd openfga-ide
 ```
 
 ## Avviare l'App
@@ -23,10 +22,10 @@ npm install
 # In due terminali separati:
 
 # Backend (porta 3000)
-cd backend && npm run dev
+cd backend && npm ci && npm run dev
 
 # Frontend (porta 5173)
-cd frontend && npm run dev
+cd ../frontend && npm ci && npm run dev
 ```
 
 Apri [http://localhost:5173](http://localhost:5173) nel browser.
@@ -45,24 +44,28 @@ Una volta connessa, usa il dropdown di selezione store nell'header per scegliere
 
 ## Caricare il Dataset Demo
 
-Un fixture demo è incluso in `demo/demo-document-sharing.json`. Modella un sistema di condivisione documenti con utenti, gruppi, cartelle e documenti.
+Un fixture demo è incluso in `demo/demo-store.json`. Modella un sistema di condivisione documenti con utenti e documenti (relazioni `owner`, `editor`, `viewer`).
 
 Per caricarlo:
 
 1. Connettiti alla tua istanza OpenFGA
 2. Vai su **Import / Export** nella navigazione
-3. Clicca **Importa** e seleziona `demo/demo-document-sharing.json`
+3. Clicca **Importa** e seleziona `demo/demo-store.json`
 4. Il modello e le tuple vengono caricati nello store attivo
 
 Questo dataset è usato in tutti gli screenshot della documentazione.
 
 ## Avvio con Docker
 
+Il modo più rapido per avviare l'intero stack — senza Node.js:
+
 ```bash
-docker compose up
+docker compose -f demo/docker-compose.yml up
 ```
 
-L'app è disponibile su [http://localhost:5173](http://localhost:5173) con il backend sulla porta 3000 (stesse porte del setup dev bare-host). Un ambiente E2E isolato è definito in `docker-compose.e2e.yml` e usa le porte 5174 / 3001.
+Scarica le immagini pre-compilate da GHCR e avvia anche OpenFGA e PostgreSQL. Apri [http://localhost:5173](http://localhost:5173).
+
+> Se hai già un'istanza OpenFGA, consulta la sezione [Docker Images](https://github.com/monte97/openfga-ide#docker-images) nel README per un compose minimale.
 
 ## Passi Successivi
 
